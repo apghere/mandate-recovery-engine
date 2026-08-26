@@ -25,4 +25,8 @@
 | 8 | Benchmark, oracle, sensitivity | `make bench` reproducible byte-for-byte |
 | 9 | Dashboard, deploy, README | Fresh clone -> demo in three commands |
 
-Current status: Phase 1 in progress (types, fsm, policy done; migration + DB wiring next).
+Current status: Phase 2 done (payer-population generator, taxonomy, sealed
+test-split hash, and the independent simulator service with DB-enforced
+4-attempt cap + chaos hooks all in place and tested). Phase 3
+(ingestion/worker/outbox/P0 baseline, wiring the real Postgres schema from
+migrations/0001_core.sql) is next.

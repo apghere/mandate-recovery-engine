@@ -6,7 +6,7 @@ dev:
 	.venv/bin/pip install -q -e ".[dev]"
 
 lint:
-	.venv/bin/ruff check backend tests
+	.venv/bin/ruff check backend data simulator tests
 
 typecheck:
 	.venv/bin/mypy
@@ -23,8 +23,7 @@ down:
 	docker compose down -v
 
 seed:
-	@echo "seed: not implemented yet (Phase 2 — data generator)"
-	@exit 1
+	.venv/bin/python -m data.generator
 
 bench:
 	@echo "bench: not implemented yet (Phase 8 — evaluation harness)"

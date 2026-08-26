@@ -7,7 +7,11 @@ name = "mandate-recovery-engine"
 version = "0.1.0"
 description = "Constrained retry-budget planner for Indian recurring-payment mandates"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "pyyaml>=6.0",
+    "fastapi>=0.115",
+    "uvicorn>=0.32",
+]
 
 [project.optional-dependencies]
 dev = [
@@ -15,6 +19,8 @@ dev = [
     "hypothesis>=6.100",
     "ruff>=0.6",
     "mypy>=1.11",
+    "httpx>=0.27",
+    "types-PyYAML>=6.0",
 ]
 
 [tool.setuptools.packages.find]
@@ -35,4 +41,4 @@ select = ["E", "F", "I", "UP", "B"]
 python_version = "3.12"
 strict = true
 mypy_path = "backend"
-files = ["backend/app"]
+files = ["backend/app", "data", "simulator"]
