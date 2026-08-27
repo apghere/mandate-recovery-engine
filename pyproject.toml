@@ -41,4 +41,4 @@ select = ["E", "F", "I", "UP", "B"]
 python_version = "3.12"
 strict = true
 mypy_path = "backend"
-files = ["backend/app", "data", "simulator"]
+files = ["backend/app", "data", "simulator", "scripts"]

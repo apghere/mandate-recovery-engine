@@ -6,7 +6,7 @@ dev:
 	.venv/bin/pip install -q -e ".[dev]"
 
 lint:
-	.venv/bin/ruff check backend data simulator tests
+	.venv/bin/ruff check backend data simulator scripts tests
 
 typecheck:
 	.venv/bin/mypy
