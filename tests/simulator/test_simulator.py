@@ -5,12 +5,12 @@ from datetime import UTC, datetime
 import pytest
 from fastapi.testclient import TestClient
 
-from simulator.app import ALLOWED_SLOT_HOURS, create_app
+from simulator.app import _in_permitted_window, create_app
 from simulator.chaos import ChaosConfig
 from simulator.store import AttemptRecord, SequenceCapViolation, Store
 
-ALLOWED_HOUR = next(iter(ALLOWED_SLOT_HOURS))
-DISALLOWED_HOUR = next(h for h in range(24) if h not in ALLOWED_SLOT_HOURS)
+ALLOWED_HOUR = next(h for h in range(24) if _in_permitted_window(h))
+DISALLOWED_HOUR = next(h for h in range(24) if not _in_permitted_window(h))
 
 
 def _slot(hour: int) -> str:

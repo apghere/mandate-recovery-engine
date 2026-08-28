@@ -21,12 +21,18 @@ from simulator.chaos import ChaosConfig, roll_5xx, roll_timeout
 from simulator.decline import decide_outcome
 from simulator.store import AttemptRecord, SequenceCapViolation, Store
 
-# Non-peak execution slots, in UTC hour-of-day — matches the ~2-slots-per-day
-# horizon the planner solves over (docs §K.4). A real integration would read
-# these from NPCI/issuer-published windows; fixed here since the point being
-# proven is that *some* window is enforced independently, not the exact
-# hours chosen.
-ALLOWED_SLOT_HOURS = frozenset({2, 14})
+# Non-peak execution window, UTC hour-of-day: 00:00-05:59 and 22:00-23:59.
+# Deliberately NOT imported from backend/app/domain/policy.py's identical
+# _PERMITTED_WINDOW_HOURS assumption — the whole point of a separate
+# simulator (docs §H.2) is that its enforcement is independently coded, so a
+# bug in one doesn't silently pass the other. The *values* are kept in sync
+# by hand because they represent the same real-world NPCI assumption; if you
+# change one, change both and say so in the commit.
+PERMITTED_WINDOW_HOURS: tuple[range, ...] = (range(0, 6), range(22, 24))
+
+
+def _in_permitted_window(hour: int) -> bool:
+    return any(hour in window for window in PERMITTED_WINDOW_HOURS)
 
 MAX_SEQUENCE_NO = 4
 
@@ -103,7 +109,7 @@ def create_app(*, db_path: str = ":memory:", chaos: ChaosConfig | None = None) -
                 outcome=outcome, raw_reason=existing.raw_reason, idempotent_replay=True
             )
 
-        if req.scheduled_for.hour not in ALLOWED_SLOT_HOURS:
+        if not _in_permitted_window(req.scheduled_for.hour):
             raise HTTPException(
                 status_code=409, detail={"denial_reason": "OUTSIDE_EXECUTION_WINDOW"}
             )

@@ -1,0 +1,23 @@
+# Phase 3: Postgres only, for real local development against the schema in
+# migrations/. api/worker/simulator run directly via `.venv/bin/uvicorn`
+# during development; containerizing them is a Day 6 deploy-polish concern
+# (docs §N Day 6), not a Day 2 correctness one — see docs/ADR/0002.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: mre
+      POSTGRES_PASSWORD: mre
+      POSTGRES_DB: mre
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U mre"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+
+volumes:
+  pgdata:
