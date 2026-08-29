@@ -1,0 +1,35 @@
+{
+  "model_version": "b5ede2c83c96e34a",
+  "train_rows": 23916,
+  "calibration_rows": 5876,
+  "eval_rows": 8196,
+  "eval_split": "dev",
+  "brier_before": 0.19027128344663688,
+  "brier_after": 0.19051546646318715,
+  "ece_before": 0.01157367988858819,
+  "ece_after": 0.014654215084772368,
+  "bin_counts_before": [
+    55,
+    98,
+    50,
+    77,
+    332,
+    466,
+    910,
+    5150,
+    1057,
+    1
+  ],
+  "bin_counts_after": [
+    150,
+    33,
+    45,
+    41,
+    699,
+    55,
+    236,
+    4798,
+    2107,
+    32
+  ]
+}

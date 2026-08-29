@@ -52,4 +52,33 @@ worker.py): per-merchant contact cap and quiet hours are hardcoded
 defaults, not real config; AFA consent flow doesn't exist yet
 (afa_satisfied is always False); merchant/global kill switches have no
 admin surface; mandate.revoked / notification.opted_out ingestion is
-deferred to Day 4. Phase 4 (success model + calibration) is next.
+deferred to Day 4.
+
+Phase 4 done. Found and closed a real gap before training anything:
+simulator/decline.py's success probability was flat with respect to
+timing (only issuer + chronic-failure-propensity), which would have let a
+success model learn "issuer predicts outcome" while learning nothing
+about *when* to retry — hollowing out Phase 5's planner, whose entire
+value proposition is exploiting timing. Added a balance-cycle model
+(days-since-credit-day -> expected balance -> logistic funds-sufficiency
+probability), backward-compatible (optional kwargs, flat fallback when
+absent) so Phase 3's worker/replay path is unaffected — verified
+byte-identical replay output before/after.
+
+app/ml/features.py (pure MandateSnapshot -> array, train/serve-skew
+defence), app/ml/corpus.py (labeled corpus from train/calibration/dev
+splits — test stays sealed), app/ml/train.py (HistGradientBoostingClassifier),
+app/ml/calibrate.py (isotonic fit on `calibration`, Brier/ECE evaluated on
+held-out `dev`, reliability diagram with per-bin sample counts annotated
+so a sparse-bin artifact is never a hidden gotcha), app/ml/registry.py
+(content-addressed model versioning). `make train` runs the whole
+pipeline in ~2s and writes reports/calibration.png +
+reports/calibration_metrics.json (both committed).
+
+Honest finding, reported not hidden: the GBM was already well-calibrated
+out of the box (ECE ~1.2%); isotonic calibration provided no benefit and
+slightly increased ECE on held-out data at this corpus size. Kept as-is
+per docs §I.17 ("a credible negative result outranks a fabricated
+positive one") rather than tuned until it looked better.
+
+Phase 5 (DP planner + stopping rule) is next.

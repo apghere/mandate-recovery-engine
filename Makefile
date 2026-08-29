@@ -1,4 +1,4 @@
-.PHONY: dev check lint typecheck test up down migrate seed replay-fixed bench
+.PHONY: dev check lint typecheck test up down migrate seed replay-fixed train bench
 
 dev:
 	python3 -m venv .venv
@@ -33,6 +33,9 @@ seed:
 
 replay-fixed:
 	.venv/bin/python -m scripts.replay_fixed
+
+train:
+	.venv/bin/python -m scripts.train
 
 bench:
 	@echo "bench: not implemented yet (Phase 8 — paired multi-policy evaluation harness)"

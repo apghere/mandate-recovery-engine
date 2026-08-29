@@ -10,5 +10,7 @@ __pycache__/
 node_modules/
 .next/
 reports/*.png
+!reports/calibration.png
 data/generated/
+ml/artifacts/
 *.db
