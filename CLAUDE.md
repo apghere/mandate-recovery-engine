@@ -81,4 +81,39 @@ slightly increased ECE on held-out data at this corpus size. Kept as-is
 per docs §I.17 ("a credible negative result outranks a fabricated
 positive one") rather than tuned until it looked better.
 
-Phase 5 (DP planner + stopping rule) is next.
+Phase 5 core done: app/domain/planner.py — exact backward induction over
+(slot, attempts-remaining, notice-state), ~28x5x4 states, solves in
+microseconds. Verified against an independently-coded, unmemoized
+top-down recursive brute-force enumeration of the same decision problem,
+at the root state and at every reachable state, plus randomized small
+configs via Hypothesis — not just re-deriving the same algorithm a second
+way. Monotonicity properties hold (more budget / higher success
+probability never lowers value). STOP_AND_ESCALATE is a first-class
+action; the stopping rule is literally the DP's own max-comparison at
+every state, not a bolted-on threshold.
+
+Found and fixed a real tie-breaking bug while writing the correctness
+tests, not a typo: when `e_manual` is time-invariant, IDLE-until-later-
+STOP and STOP-now become exactly value-equal, and Python's max() silently
+preferred whichever action was listed first — which was IDLE. The *value*
+was always correct; the *chosen action* on that tie was an arbitrary
+artifact of list order, and it told a worse story ("waited around, then
+escalated" instead of "escalated immediately" for identical EV). Fixed by
+ordering candidates in explicit tie-break priority (ATTEMPT > STOP >
+NOTIFY > IDLE) rather than leaving it to insertion order.
+
+Documented simplifications, consistent with docs §N.7's own cut-order
+item #5: notice validity is a single "slots until ready" integer with no
+modelled expiry (the real authorize() independently re-enforces the true
+7-day cap regardless of what the planner assumed — a mismatch surfaces as
+the §W3 demo scenario, not a silent bug); revocation/opt-out hazards are
+fixed constants, not the eventual logistic hazard model (Phase 6/7); the
+mandate-continuation term (`gamma * expected_future_value`) is an input
+the planner accepts but doesn't compute.
+
+Not yet done, and meaningfully separate follow-on work: wiring the
+planner as a live `mre` policy alongside P0 `fixed` (plus a `greedy`
+ablation) — bridging real DB case state -> MandateSnapshot -> the trained
+Phase 4 model's calibrated probabilities -> planner input, registering it
+in the worker/ingestion path the way docs §O.4's Phase 5 prompt describes.
+That's the natural next chunk, not a quick addendum to this one.
