@@ -19,6 +19,7 @@ load_dotenv()
 class Settings:
     database_url: str
     simulator_url: str
+    anthropic_api_key: str | None
 
 
 def get_settings() -> Settings:
@@ -27,4 +28,5 @@ def get_settings() -> Settings:
             "DATABASE_URL", "postgresql://mre:mre@localhost:5432/mre"
         ),
         simulator_url=os.environ.get("SIMULATOR_URL", "http://localhost:8001"),
+        anthropic_api_key=os.environ.get("ANTHROPIC_API_KEY"),
     )
