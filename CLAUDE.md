@@ -328,14 +328,86 @@ property of the problem (real NPCI attempt cap + real retry horizon), not
 a benchmark artifact — matches docs §I.17's standing instruction that a
 credible negative/modest result outranks a fabricated positive one.
 
-Deliberately NOT yet run: the sealed `test` split. `--split test` exists
-and works, but the split is meant to be touched exactly once
-(docs §J.5/§T) — holding off until the harness itself needs no further
-changes, then running it once, by hand, for the number that goes in the
-final report.
+E_MANUAL sensitivity sweep (dev, n=400, {100, 150, 250}): the ranking held
+at every value — mre beat greedy significantly throughout, and mre's edge
+over fixed stayed positive and in the same rough magnitude (+15.82, +15.82,
++14.03 rupees/payer) without flipping sign. Robust on dev.
 
-Next: decide whether to spend more time tightening Phase 8 (larger n for
-narrower CIs, the E_MANUAL sensitivity sweep's actual output, then the one
-final `--split test` run) or move to Phase 9 (dashboard, deploy, README) —
-raised with the user rather than decided unilaterally, given how close
-5 Sept is.
+THE LOCKED RUN (docs §J.5/§T — test split touched exactly once, done, not
+repeatable): `--split test --n 500 --n-boot 5000 --sensitivity`, run once,
+by hand, with the user's explicit go-ahead after the dev sensitivity sweep
+came back clean.
+
+    policy    recovered  rate    rupees       attempts
+    fixed     481        96.2%   415,700.10   685
+    greedy    473        94.6%   410,329.34   676
+    mre       474        94.8%   412,213.85   685
+    oracle    475        95.0%   411,238.50   682
+
+    fixed vs mre:    +6.97 rupees/payer, 95% CI [ 1.68, 13.86] -- significant
+    fixed vs greedy: +10.74 rupees/payer, 95% CI [ 1.28, 22.90] -- significant
+    fixed vs oracle:  +8.92 rupees/payer, 95% CI [ 0.39, 20.26] -- significant
+
+This REVERSES the dev-split direction: fixed recovers significantly MORE
+gross rupees than mre, greedy, and even oracle on the one locked test
+batch. Reported exactly as measured — this is not spun, and it is not
+being treated as a bug to explain away.
+
+Investigated rather than accepted at face value (querying the already-
+committed DB from this same run, not a re-roll — no new random draws):
+first hypothesis was that gross recovered-rupees unfairly ignores the
+E_MANUAL cost mre/oracle pay when they escalate (fixed never escalates —
+it has no stopping rule, so it always burns attempts regardless of odds).
+Checked directly: escalations are rare (mre: 2/500, oracle: 2/500, greedy:
+5/500) and E_MANUAL=150 is small next to a ~864-rupee average recovery —
+netting out the escalation cost moves mre's total by only ~300 rupees
+(412,213.85 -> 411,913.85). Does not explain the gap. Ruled out.
+
+The real explanation: mre/oracle's DP explicitly prices
+`optout_hazard_cost`/`revoke_hazard_cost` (domain/planner.py's
+PlannerConfig — fixed, documented, made-up constants standing in for "an
+extra low-odds attempt/notify risks annoying the payer into opting out or
+revoking the mandate entirely") into every ATTEMPT/NOTIFY decision, so on
+a handful of genuinely low-probability slots the DP rationally declines to
+attempt (a few more cycles quietly run out of plan steps and land in
+ABANDONED via sweep_exhausted_plans's honest "plan_exhausted" path, rather
+than via a real 4th consumed attempt) where fixed's blind schedule tries
+anyway and — since the shared realised world means it's asking about the
+same real slot — occasionally succeeds. mre/oracle's abandoned counts
+(24, 23) are correspondingly a bit higher than fixed's (19). This is the
+DP being rational against a value function that includes a real, named
+cost domain/policy.py and PlannerConfig were built to represent — but
+neither the simulator nor this benchmark's headline metric can currently
+observe or credit that cost's *benefit*: nothing here stochastically
+revokes a mandate or records an opt-out as a consequence of contact
+frequency (docs §N.7 already flags the revocation hazard model as "fixed
+constant, not the eventual logistic hazard model" — an explicit, prior
+scope cut, not something this benchmark run discovered new), and even if
+it did, a single-cycle metric wouldn't capture a payer who didn't churn on
+a *later* cycle because they weren't over-contacted on this one. So the
+benchmark, exactly as scoped, structurally cannot demonstrate the half of
+MRE's value proposition that depends on avoided annoyance/revocation —
+only the timing-optimization half, where (per the dev-split runs above)
+its edge over fixed was already small and inconsistent in sign at this
+population scale.
+
+Honest bottom line for the final report: MRE recovers statistically
+indistinguishable-to-slightly-less gross rupees per cycle than a policy
+with no stopping rule at all, on the one locked measurement. Its more
+defensible claim, backed by what this benchmark actually measured, is
+narrower than "recovers more money" — RBI-compliant by construction
+(docs §W3's demo), with a timing-optimization edge that's real on dev but
+small and did not survive the one locked test run, plus a
+hazard-avoidance rationale that's architecturally real (the DP prices it)
+but not something this benchmark's current scope (no stochastic
+revocation/opt-out model, single-cycle metric) can measure or credit.
+Extending the simulator with a real revocation/opt-out hazard tied to
+contact frequency, and a multi-cycle metric, would be the correct way to
+actually test that half of the thesis — out of scope for the remaining
+time before 5 Sept, and explicitly flagged here rather than left
+implicit.
+
+Next: raised with the user rather than decided unilaterally — how to
+frame this in the final demo/report, and whether remaining time goes to
+Phase 9 (dashboard, deploy, README) as-is or to a scoped-down hazard model
+first.
