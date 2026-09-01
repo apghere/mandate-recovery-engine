@@ -20,6 +20,7 @@ class Settings:
     database_url: str
     simulator_url: str
     anthropic_api_key: str | None
+    webhook_secret: str | None
 
 
 def get_settings() -> Settings:
@@ -29,4 +30,8 @@ def get_settings() -> Settings:
         ),
         simulator_url=os.environ.get("SIMULATOR_URL", "http://localhost:8001"),
         anthropic_api_key=os.environ.get("ANTHROPIC_API_KEY"),
+        # Reuses the same env var name as scripts/webhook_capture.py's spike
+        # tool (docs/RAZORPAY_TESTMODE_FINDINGS.md §6-7) — same mechanism,
+        # same secret, real production endpoint this time.
+        webhook_secret=os.environ.get("RAZORPAY_WEBHOOK_SECRET"),
     )
