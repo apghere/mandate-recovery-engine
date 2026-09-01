@@ -154,6 +154,58 @@ rather than stretched into a bigger claim; resolving that properly (more
 samples, bootstrap CIs, a true paired world) is exactly what Phase 8
 exists for, not skipped, deferred on purpose.
 
-Next: Phase 6 (LLM decline-string normaliser + notice generator +
-validator) or Phase 7 (chaos suite, audit ledger completeness) — both
-independent of each other, pick based on remaining time.
+Phase 6 done — both remaining MUST-HAVEs (M9, M10) built and wired into
+the real pipeline, not left standalone. app/ai/client.py: the one place
+the Anthropic SDK is touched, model claude-haiku-4-5 (an explicit,
+documented choice from docs §K.2, not a cost-driven default — see
+docs/ADR/0004). No credentials required for correctness: an absent
+ANTHROPIC_API_KEY degrades every caller to its documented fallback (docs
+§M.1), verified as the actual failure mode empirically (the SDK raises a
+bare TypeError with no key, not a catchable SDK exception — checked
+before writing the catch, not assumed).
+
+app/ai/normalizer.py: dictionary -> fuzzy (hand-rolled Levenshtein, no
+new dependency) -> LLM -> UNKNOWN, output hard-validated (enum
+membership, evidence_span must be a literal substring — the
+hallucination check), cached by input hash. docs §L.3's red-team
+exercise run for real in tests/ai/test_normalizer.py: all 4 adversarial
+suffixes in data/taxonomy.yaml, against a *simulated successfully-
+injected* model, confirming the validator — not the model's good
+behaviour — bounds the damage to one rejected/UNKNOWN classification.
+
+app/ai/validator.py + app/ai/notice.py: the LLM drafts, a pure
+(no-LLM-needed) validator decides — required RBI fields, opt-out
+instruction, every number grounded in a caller-built whitelist (scoped
+honestly to numbers, not full proper-noun NER — documented in the module
+docstring), no threats/fabricated consequences/manufactured urgency,
+per-channel length caps. One repair attempt with the validator's own
+errors fed back; two rejections or no LLM at all hard-falls to a static
+template that's self-consistent with its own validator by construction.
+
+Then wired both into the live path (built-but-unused isn't done):
+ingest.py's ingest_debit_failed now normalizes the real seq-1 raw_reason
+and persists canonical_cause/cause_confidence/cause_source — columns
+that existed in the schema since Phase 1 but were never populated until
+now. worker.py's notify-step processing now calls generate_notice
+instead of a hardcoded f-string. Both replay_fixed.py and
+replay_compare.py re-run byte-identical to before this wiring — zero
+behavioural regression, confirms this was purely connecting two
+already-correct components to something real.
+
+38 new tests in tests/ai/ (normalizer + validator + notice), all
+deterministic, no network in CI. 160 tests green (was 121 at the end of
+Phase 5).
+
+Not done, correctly deferred to Phase 7: mandate.revoked /
+notification.opted_out ingestion, webhook HMAC signature verification on
+the real /events endpoint, the full chaos suite (duplicate/delayed/out-
+of-order events, malformed LLM output now that there's a real LLM output
+shape to malform, mid-plan revocation) beyond the handful of chaos-ish
+tests that already exist. merchant_name in notices currently falls back
+to merchant_id — no separate display-name column in the schema yet,
+noted where it happens in worker.py, cheap to fix whenever it matters.
+
+Next: Phase 7 (policy wiring completeness, chaos suite, webhook signing)
+or Phase 8 (the rigorous paired benchmark) — Phase 8 is explicitly
+"never cut" per docs §I.17/§B.3, so don't let Phase 7 run long enough to
+threaten it.
