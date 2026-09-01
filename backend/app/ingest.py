@@ -50,11 +50,15 @@ from datetime import date, datetime
 from typing import Any
 
 from app import repo
+from app.ai.normalizer import normalize
 from app.db import Conn
 from app.domain.fsm import Event, transition
 from app.domain.types import CaseState
 from app.policies.fixed import POLICY_VERSION as FIXED_POLICY_VERSION
 from app.policies.fixed import ScheduledStep, compute_fixed_schedule
+from data.generator import load_taxonomy
+
+_TAXONOMY = load_taxonomy()
 
 
 @dataclass(frozen=True)
@@ -212,16 +216,50 @@ def ingest_debit_failed(
                 idempotency_key=f"{event.cycle_id}:seq1:{event.external_id}",
                 scheduled_for=event.occurred_at,
             )
+
+            cycle = repo.get_cycle(conn, event.cycle_id)
+            assert cycle is not None
+            mandate = repo.get_mandate(conn, event.mandate_id)
+            assert mandate is not None
+
+            # Decline-string normalisation (docs §K.2): dictionary -> fuzzy
+            # -> LLM -> UNKNOWN. Never raises; UNKNOWN is a correct, first-
+            # class outcome under genuine uncertainty, not a failure.
+            normalization = (
+                normalize(
+                    event.raw_reason,
+                    issuer_code=mandate["issuer_code"],
+                    rail=mandate["rail"],
+                    taxonomy=_TAXONOMY,
+                )
+                if event.raw_reason is not None
+                else None
+            )
             repo.update_attempt_outcome(
                 conn,
                 intent_id,
                 outcome="failure",
                 raw_reason=event.raw_reason,
                 executed_at=event.occurred_at,
+                canonical_cause=normalization.cause.value if normalization else None,
+                cause_confidence=normalization.confidence if normalization else None,
+                cause_source=normalization.source if normalization else None,
             )
 
-            cycle = repo.get_cycle(conn, event.cycle_id)
-            assert cycle is not None
+            repo.insert_audit(
+                conn,
+                actor="system",
+                cycle_id=event.cycle_id,
+                action="cause_normalized",
+                detail={
+                    "attempt_intent_id": intent_id,
+                    "raw_reason": event.raw_reason,
+                    "cause": normalization.cause.value if normalization else None,
+                    "confidence": normalization.confidence if normalization else None,
+                    "source": normalization.source if normalization else None,
+                },
+            )
+
             plan_choice = compute_plan(cycle["due_date"])
 
             state = CaseState.DUE

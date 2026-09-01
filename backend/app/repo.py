@@ -298,14 +298,22 @@ def update_attempt_outcome(
     outcome: str,
     raw_reason: str | None,
     executed_at: datetime,
+    canonical_cause: str | None = None,
+    cause_confidence: float | None = None,
+    cause_source: str | None = None,
 ) -> None:
     conn.execute(
         """
         UPDATE attempt_intents
-        SET outcome = %s, raw_reason = %s, executed_at = %s
+        SET outcome = %s, raw_reason = %s, executed_at = %s,
+            canonical_cause = %s, cause_confidence = %s, cause_source = %s
         WHERE id = %s
         """,
-        (outcome, raw_reason, executed_at, intent_id),
+        (
+            outcome, raw_reason, executed_at,
+            canonical_cause, cause_confidence, cause_source,
+            intent_id,
+        ),
     )
 
 

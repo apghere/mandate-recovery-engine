@@ -111,6 +111,33 @@ def test_first_attempt_succeeded_resolves_without_engaging_mre(db: Conn) -> None
     assert plan_row["n"] == 0
 
 
+def test_first_attempt_failure_is_normalized_and_persisted(db: Conn) -> None:
+    """docs §K.2 end-to-end: the raw decline string on the external seq-1
+    failure gets normalized (dictionary match here, since "INSUFFICIENT
+    FUNDS" is a literal taxonomy template -- no LLM/network involved) and
+    the result actually lands on the attempt_intents row, not just logged
+    somewhere."""
+    _seed_mandate_and_cycle(db, "CYC-NORM")
+    _fail_first_attempt(db, "CYC-NORM")
+    row = db.execute(
+        "SELECT canonical_cause, cause_confidence, cause_source, raw_reason "
+        "FROM attempt_intents WHERE cycle_id = %s AND sequence_no = 1",
+        ("CYC-NORM",),
+    ).fetchone()
+    assert row is not None
+    assert row["canonical_cause"] == "INSUFFICIENT_FUNDS"
+    assert row["cause_confidence"] == 1.0
+    assert row["cause_source"] == "dictionary"
+    assert row["raw_reason"] == "INSUFFICIENT FUNDS"
+
+    audit_row = db.execute(
+        "SELECT detail FROM audit_ledger WHERE cycle_id = %s AND action = 'cause_normalized'",
+        ("CYC-NORM",),
+    ).fetchone()
+    assert audit_row is not None
+    assert audit_row["detail"]["cause"] == "INSUFFICIENT_FUNDS"
+
+
 def test_first_attempt_failed_seeds_exactly_three_remaining_attempt_steps(db: Conn) -> None:
     _seed_mandate_and_cycle(db, "CYC-F1")
     _fail_first_attempt(db, "CYC-F1")

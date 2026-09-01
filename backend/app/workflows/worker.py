@@ -22,6 +22,7 @@ import httpx
 
 from app import repo
 from app.adapters.simulator_client import RailDenied, SimulatorClient
+from app.ai.notice import NoticeVariables, generate_notice
 from app.db import Conn
 from app.domain.fsm import Event, transition
 from app.domain.policy import authorize
@@ -113,7 +114,7 @@ def process_due_plan_steps(conn: Conn, *, now: datetime, limit: int = 200) -> Ti
         snapshot = _build_snapshot(conn, cycle, mandate, now)
 
         if step["step_type"] == "notify":
-            result = _process_notify_step(conn, step, cycle, snapshot, now, result)
+            result = _process_notify_step(conn, step, cycle, mandate, snapshot, now, result)
         elif step["step_type"] == "attempt":
             result = _process_attempt_step(conn, step, cycle, snapshot, now, result)
         else:  # pragma: no cover - escalate lands in a later phase
@@ -132,6 +133,7 @@ def _process_notify_step(
     conn: Conn,
     step: dict[str, Any],
     cycle: dict[str, Any],
+    mandate: dict[str, Any],
     snapshot: CaseSnapshot,
     now: datetime,
     result: TickResult,
@@ -181,9 +183,19 @@ def _process_notify_step(
             result.notified, result.notify_denied, result.dispatched, result.attempt_denied
         )
 
-    body = (
-        f"Your payment of Rs.{cycle['amount']} for mandate {cycle['mandate_id']} "
-        f"will be attempted on {covers_debit_at.isoformat()}. Reply STOP to opt out."
+    # docs §K.5: the LLM drafts, the deterministic validator decides. Falls
+    # to a static, self-consistent template if the LLM is unavailable or
+    # never produces a valid draft — never an unvalidated body persisted.
+    notice_result = generate_notice(
+        NoticeVariables(
+            merchant_name=mandate["merchant_id"],  # no separate display name in schema yet
+            amount=f"Rs.{cycle['amount']}",
+            debit_date=covers_debit_at.strftime("%d %B %Y"),
+            debit_time=covers_debit_at.strftime("%H:%M"),
+            mandate_ref=cycle["mandate_id"],
+            reason="recurring mandate payment",
+            channel="sms",
+        )
     )
     repo.insert_notification(
         conn,
@@ -191,9 +203,13 @@ def _process_notify_step(
         sent_at=step["scheduled_for"],
         covers_debit_at=covers_debit_at,
         channel="sms",
-        body=body,
-        generated_by="template",
-        validator_result={"valid": True},
+        body=notice_result.body,
+        generated_by=notice_result.generated_by,
+        validator_result={
+            "valid": notice_result.validator_result.valid,
+            "errors": notice_result.validator_result.errors,
+            "repaired": notice_result.repaired,
+        },
     )
     repo.mark_plan_step(conn, step["id"], status="done")
     repo.insert_audit(conn, actor="system", cycle_id=cycle["id"], action="notify_sent", detail={})
