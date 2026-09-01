@@ -1,4 +1,4 @@
-.PHONY: dev check lint typecheck test up down migrate seed seed-payers replay-fixed replay-compare train bench
+.PHONY: dev check lint typecheck test up down migrate seed seed-payers replay-fixed replay-compare train demo-predictability bench
 
 dev:
 	python3 -m venv .venv
@@ -42,6 +42,9 @@ replay-compare:
 
 train:
 	.venv/bin/python -m scripts.train
+
+demo-predictability:
+	.venv/bin/python -m scripts.demo_predictability
 
 bench:
 	@echo "bench: not implemented yet (Phase 8 — paired multi-policy evaluation harness)"
