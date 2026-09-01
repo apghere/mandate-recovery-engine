@@ -116,7 +116,7 @@ def process_due_plan_steps(conn: Conn, *, now: datetime, limit: int = 200) -> Ti
         if step["step_type"] == "notify":
             result = _process_notify_step(conn, step, cycle, mandate, snapshot, now, result)
         elif step["step_type"] == "attempt":
-            result = _process_attempt_step(conn, step, cycle, snapshot, now, result)
+            result = _process_attempt_step(conn, step, cycle, mandate, snapshot, now, result)
         else:  # pragma: no cover - escalate lands in a later phase
             repo.mark_plan_step(
                 conn, step["id"], status="cancelled", cancelled_reason="unhandled_step_type"
@@ -222,6 +222,7 @@ def _process_attempt_step(
     conn: Conn,
     step: dict[str, Any],
     cycle: dict[str, Any],
+    mandate: dict[str, Any],
     snapshot: CaseSnapshot,
     now: datetime,
     result: TickResult,
@@ -274,16 +275,33 @@ def _process_attempt_step(
         idempotency_key=idempotency_key,
         scheduled_for=step["scheduled_for"],
     )
+    # Real payer/issuer context on the outbox payload, not the placeholder
+    # `payer_id: None` this used to carry (a real bug: it meant every
+    # worker-dispatched attempt — sequences 2-4, exactly the ones a policy
+    # actually schedules — reached the simulator with no issuer/timing
+    # signal at all, silently falling back to the same flat default for
+    # every payer regardless of who they were or when the attempt landed).
+    # payers rows are optional (Phase 5 simplification — not every mandate
+    # in every test has one seeded), so this degrades gracefully to the
+    # documented flat fallback rather than failing when absent.
+    payer = repo.get_payer(conn, mandate["payer_id"])
     outbox_payload: dict[str, Any] = {
         "cycle_id": cycle["id"],
         "sequence_no": sequence_no,
         "idempotency_key": idempotency_key,
         "mandate_id": cycle["mandate_id"],
-        "payer_id": None,
+        "payer_id": mandate["payer_id"],
         "amount": float(cycle["amount"]),
         "scheduled_for": step["scheduled_for"].isoformat(),
         "plan_step_id": step["id"],
         "attempt_intent_id": intent_id,
+        "issuer_code": mandate["issuer_code"],
+        "chronic_fail_propensity": payer["chronic_fail_propensity"] if payer else None,
+        # NUMERIC columns come back as Decimal (psycopg) -- not JSON
+        # serializable by the outbox's Json(...) wrapper, hence the float().
+        "mean_balance": float(payer["mean_balance"]) if payer else None,
+        "balance_volatility": payer["balance_volatility"] if payer else None,
+        "credit_day": payer["credit_day"] if payer else None,
     }
     repo.insert_outbox(
         conn, destination="simulator", idempotency_key=idempotency_key, payload=outbox_payload
@@ -324,6 +342,15 @@ def drain_outbox(
                 payer_id=payload["payer_id"],
                 amount=payload["amount"],
                 scheduled_for=datetime.fromisoformat(payload["scheduled_for"]),
+                # .get(), not [...]: outbox rows dispatched before this
+                # field set existed (a live deploy mid-upgrade) shouldn't
+                # crash the drain loop — they just fall back to the
+                # documented flat outcome model, same as always.
+                issuer_code=payload.get("issuer_code"),
+                chronic_fail_propensity=payload.get("chronic_fail_propensity"),
+                mean_balance=payload.get("mean_balance"),
+                balance_volatility=payload.get("balance_volatility"),
+                credit_day=payload.get("credit_day"),
             )
         except RailDenied as exc:
             result = _handle_rail_denied(conn, row, payload, exc, now, result)

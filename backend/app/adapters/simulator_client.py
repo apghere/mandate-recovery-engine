@@ -51,6 +51,9 @@ class SimulatorClient:
         scheduled_for: datetime,
         issuer_code: str | None = None,
         chronic_fail_propensity: float | None = None,
+        mean_balance: float | None = None,
+        balance_volatility: float | None = None,
+        credit_day: int | None = None,
     ) -> ExecuteResult:
         payload: dict[str, Any] = {
             "cycle_id": cycle_id,
@@ -62,6 +65,9 @@ class SimulatorClient:
             "scheduled_for": scheduled_for.isoformat(),
             "issuer_code": issuer_code,
             "chronic_fail_propensity": chronic_fail_propensity,
+            "mean_balance": mean_balance,
+            "balance_volatility": balance_volatility,
+            "credit_day": credit_day,
         }
         resp = httpx.post(f"{self._base_url}/execute", json=payload, timeout=self._timeout)
         if resp.status_code == 409:

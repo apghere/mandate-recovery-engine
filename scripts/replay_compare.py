@@ -281,6 +281,9 @@ def _seed_and_run_attempt_one(
         scheduled_for=DUE_AT,
         issuer_code=payer.issuer_code,
         chronic_fail_propensity=payer.chronic_fail_propensity,
+        mean_balance=payer.mean_balance,
+        balance_volatility=payer.balance_volatility,
+        credit_day=payer.credit_day,
     )
     outcome_event = DebitOutcomeEvent(
         external_id=f"ext:{cycle_id}:attempt1",

@@ -160,3 +160,99 @@ def test_chaos_timeout_returns_unknown_and_consumes_the_slot(client: TestClient)
 def test_chaos_config_rejects_out_of_range_rate() -> None:
     with pytest.raises(ValueError, match=r"\[0, 1\]"):
         ChaosConfig(error_5xx_rate=1.5)
+
+
+# --- Phase 8 prep: shared-realised-world seeding (see app._world_seed_key) ---
+
+
+def test_same_payer_and_moment_get_identical_draw_across_different_cycles(
+    client: TestClient,
+) -> None:
+    """The whole point of keying the outcome draw on (payer_id,
+    scheduled_for, sequence_no) instead of idempotency_key: two entirely
+    different cycles/policies asking about the same real payer at the same
+    real moment must see the same underlying draw — this is what makes a
+    paired benchmark (Phase 8) actually paired instead of independently
+    noisy per policy."""
+    common = {
+        "payer_id": "PAYER-SHARED",
+        "amount": 500.0,
+        "scheduled_for": _slot(ALLOWED_HOUR),
+        "sequence_no": 2,
+        "issuer_code": "ISS01",
+        "chronic_fail_propensity": 0.1,
+    }
+    first = client.post(
+        "/execute",
+        json=_execute_payload(
+            cycle_id="CYC-POLICY-A", idempotency_key="CYC-POLICY-A:seq2", **common
+        ),
+    )
+    second = client.post(
+        "/execute",
+        json=_execute_payload(
+            cycle_id="CYC-POLICY-B", idempotency_key="CYC-POLICY-B:seq2", **common
+        ),
+    )
+    assert first.status_code == second.status_code == 200
+    assert first.json()["outcome"] == second.json()["outcome"]
+    assert first.json()["raw_reason"] == second.json()["raw_reason"]
+    # Genuinely independent requests, not the idempotent-replay path.
+    assert first.json()["idempotent_replay"] is False
+    assert second.json()["idempotent_replay"] is False
+
+
+def test_no_payer_id_falls_back_to_idempotency_key_seeding(client: TestClient) -> None:
+    """Without a payer_id, two different cycles at the same moment must NOT
+    be forced to collide on a None-keyed seed — this preserves the
+    pre-Phase-8 behaviour (every request drew independently) for any
+    caller that doesn't supply payer context."""
+    payloads = [
+        _execute_payload(
+            cycle_id=f"CYC-{i}", idempotency_key=f"CYC-{i}:seq1", sequence_no=1
+        )
+        for i in range(20)
+    ]
+    outcomes = [client.post("/execute", json=p).json()["outcome"] for p in payloads]
+    # Not asserting a specific split (that would pin RNG internals) — just
+    # that they aren't all forced identical by an accidental shared seed.
+    assert len(set(outcomes)) > 1
+
+
+def test_timing_context_changes_the_outcome_distribution(client: TestClient) -> None:
+    """A request with a payer's real balance-cycle context reaches
+    decide_outcome's timing-sensitive path (simulator/decline.py), not the
+    flat fallback — proven by making the *same* nominal request differ only
+    by which day-of-month it lands on relative to credit_day, and observing
+    the outcomes are not identical across a batch (a flat model would make
+    every one of them come out the same way for a fixed random seed
+    stream, since only the seed key — not the probability — would vary)."""
+    payer_kwargs = {
+        "payer_id": "PAYER-TIMING",
+        "amount": 5000.0,
+        "mean_balance": 5000.0,
+        "balance_volatility": 0.3,
+        "credit_day": 1,
+        "issuer_code": "ISS01",
+        "chronic_fail_propensity": 0.05,
+        "sequence_no": 2,
+    }
+    outcomes = []
+    for day in (1, 8, 15, 22, 28):
+        resp = client.post(
+            "/execute",
+            json=_execute_payload(
+                cycle_id=f"CYC-DAY-{day}",
+                idempotency_key=f"CYC-DAY-{day}:seq2",
+                scheduled_for=datetime(2026, 9, day, ALLOWED_HOUR, 0, tzinfo=UTC).isoformat(),
+                **payer_kwargs,
+            ),
+        )
+        assert resp.status_code == 200
+        outcomes.append(resp.json()["outcome"])
+    # Right after credit_day, funds sufficiency is near its peak; right
+    # before the next one it's near zero — day 1 (0 days since credit)
+    # should be the easiest of the five, day 28 (27 days since credit) the
+    # hardest.
+    assert outcomes[0] == "success"
+    assert outcomes[-1] == "failure"

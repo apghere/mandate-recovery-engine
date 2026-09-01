@@ -49,6 +49,14 @@ class ExecuteRequest(BaseModel):
     scheduled_for: datetime
     issuer_code: str | None = None
     chronic_fail_propensity: float | None = Field(default=None, ge=0.0, le=1.0)
+    # Timing/balance-cycle context (docs §J.2, simulator/decline.py) — see
+    # this module's docstring on _world_seed_key for why these matter.
+    # Optional, defaulting to None: a caller with no payer context (e.g. an
+    # older/lighter integration) gets decide_outcome's documented flat
+    # fallback rather than an error.
+    mean_balance: float | None = None
+    balance_volatility: float | None = Field(default=None, gt=0.0)
+    credit_day: int | None = Field(default=None, ge=1, le=28)
 
 
 class ExecuteResponse(BaseModel):
@@ -57,9 +65,31 @@ class ExecuteResponse(BaseModel):
     idempotent_replay: bool = False
 
 
-def _deterministic_rng(idempotency_key: str) -> random.Random:
-    digest = hashlib.sha256(idempotency_key.encode("utf-8")).digest()
+def _deterministic_rng(seed_key: str) -> random.Random:
+    digest = hashlib.sha256(seed_key.encode("utf-8")).digest()
     return random.Random(int.from_bytes(digest[:8], "big"))
+
+
+def _world_seed_key(req: ExecuteRequest) -> str:
+    """What actually happens on a given attempt is a fact about the
+    simulated world — this payer, this exact moment, this attempt number —
+    not an artifact of which internal cycle_id/idempotency_key our own
+    bookkeeping happened to assign it. Keying the outcome draw on
+    (payer_id, scheduled_for, sequence_no) instead of idempotency_key means
+    two different callers asking about the same real payer at the same
+    real moment — e.g. two policies in the Phase 8 paired benchmark, each
+    with their own cycle_id/idempotency_key for the same underlying payer —
+    see the identical underlying draw: a shared realised world, not
+    independent noise per policy. Falls back to idempotency_key when
+    payer_id is absent, to preserve prior behaviour exactly rather than
+    risk multiple distinct callers colliding on a None-keyed seed. Safe
+    either way for idempotent replay itself: a repeated idempotency_key is
+    already served from the store before this is ever consulted (see
+    `execute` below) — this only decides the *first* draw for a given key.
+    """
+    if req.payer_id:
+        return f"{req.payer_id}:{req.scheduled_for.isoformat()}:{req.sequence_no}"
+    return req.idempotency_key
 
 
 def _to_record(req: ExecuteRequest, outcome: Outcome, raw_reason: str | None) -> AttemptRecord:
@@ -114,7 +144,7 @@ def create_app(*, db_path: str = ":memory:", chaos: ChaosConfig | None = None) -
                 status_code=409, detail={"denial_reason": "OUTSIDE_EXECUTION_WINDOW"}
             )
 
-        rng = _deterministic_rng(req.idempotency_key)
+        rng = _deterministic_rng(_world_seed_key(req))
         chaos_cfg = state["chaos"]
 
         if roll_5xx(chaos_cfg, rng):
@@ -134,6 +164,11 @@ def create_app(*, db_path: str = ":memory:", chaos: ChaosConfig | None = None) -
             rng,
             issuer_code=req.issuer_code,
             chronic_fail_propensity=req.chronic_fail_propensity,
+            mean_balance=req.mean_balance,
+            balance_volatility=req.balance_volatility,
+            day_of_month=req.scheduled_for.day,
+            credit_day=req.credit_day,
+            amount=req.amount,
         )
         outcome = "success" if result_outcome == "success" else "failure"
         _persist(store, req, outcome, raw_reason)

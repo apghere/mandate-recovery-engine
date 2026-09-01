@@ -270,6 +270,113 @@ def test_afa_gated_cycle_reaches_abandoned_not_stuck_forever(
     assert float(cycle_after["recovered_amount"]) == 0.0
 
 
+def test_worker_dispatched_attempts_carry_real_payer_context_not_none(
+    db: Conn, simulator_base_url: str
+) -> None:
+    """Regression test (Phase 8 prep): worker.py used to hardcode
+    payer_id=None and omit issuer_code/timing context entirely on every
+    outbox payload for attempts 2-4 — exactly the attempts a policy
+    actually schedules — so the live simulator silently fell back to the
+    same flat, payer-independent probability for everyone regardless of
+    who they were or when the attempt landed."""
+    cycle_id = "CYC-CTX"
+    payer_id = "PAYER-CTX"
+    repo.upsert_payer(
+        db,
+        payer_id=payer_id,
+        segment="salaried",
+        credit_day=5,
+        mean_balance=8000.0,
+        balance_volatility=0.4,
+        issuer_code="ISS01",
+        chronic_fail_propensity=0.1,
+        annoyance_sensitivity=0.5,
+        mandate_amount=500.0,
+        split="dev",
+    )
+    db.commit()
+
+    result = ingest_cycle_due(
+        db,
+        CycleDueEvent(
+            external_id=f"ext:{cycle_id}:due",
+            mandate_id="M-CTX",
+            cycle_id=cycle_id,
+            merchant_id="MERCH1",
+            payer_id=payer_id,
+            rail="upi_autopay",
+            issuer_code="ISS01",
+            amount=500.0,
+            due_date=DUE_DATE,
+            occurred_at=DUE_AT,
+        ),
+    )
+    assert result.accepted
+    _fail_first_attempt(db, cycle_id, mandate_id="M-CTX")
+
+    first_notify = db.execute(
+        "SELECT ps.* FROM plan_steps ps JOIN plans p ON p.id = ps.plan_id "
+        "WHERE p.cycle_id = %s AND ps.step_type = 'notify' ORDER BY ps.scheduled_for LIMIT 1",
+        (cycle_id,),
+    ).fetchone()
+    first_attempt = db.execute(
+        "SELECT ps.* FROM plan_steps ps JOIN plans p ON p.id = ps.plan_id "
+        "WHERE p.cycle_id = %s AND ps.step_type = 'attempt' ORDER BY ps.scheduled_for LIMIT 1",
+        (cycle_id,),
+    ).fetchone()
+    assert first_notify is not None and first_attempt is not None
+    process_due_plan_steps(db, now=first_notify["scheduled_for"])
+    process_due_plan_steps(db, now=first_attempt["scheduled_for"])
+
+    outbox_row = db.execute(
+        "SELECT payload FROM outbox WHERE payload->>'cycle_id' = %s", (cycle_id,)
+    ).fetchone()
+    assert outbox_row is not None
+    payload = outbox_row["payload"]
+    assert payload["payer_id"] == payer_id
+    assert payload["issuer_code"] == "ISS01"
+    assert payload["chronic_fail_propensity"] == 0.1
+    assert payload["mean_balance"] == 8000.0
+    assert payload["balance_volatility"] == 0.4
+    assert payload["credit_day"] == 5
+
+
+def test_worker_dispatched_attempt_without_a_payers_row_degrades_to_flat_fallback(
+    db: Conn, simulator_base_url: str
+) -> None:
+    """No payers row for this mandate's payer_id (the common case in most
+    other tests in this file) — the outbox payload should carry the real
+    issuer_code (known from the mandate itself) but None for the
+    payer-specific timing fields, matching decide_outcome's documented
+    flat-fallback contract rather than crashing."""
+    _seed_mandate_and_cycle(db, "CYC-NOPAYER")
+    _fail_first_attempt(db, "CYC-NOPAYER")
+
+    first_notify = db.execute(
+        "SELECT ps.* FROM plan_steps ps JOIN plans p ON p.id = ps.plan_id "
+        "WHERE p.cycle_id = %s AND ps.step_type = 'notify' ORDER BY ps.scheduled_for LIMIT 1",
+        ("CYC-NOPAYER",),
+    ).fetchone()
+    first_attempt = db.execute(
+        "SELECT ps.* FROM plan_steps ps JOIN plans p ON p.id = ps.plan_id "
+        "WHERE p.cycle_id = %s AND ps.step_type = 'attempt' ORDER BY ps.scheduled_for LIMIT 1",
+        ("CYC-NOPAYER",),
+    ).fetchone()
+    assert first_notify is not None and first_attempt is not None
+    process_due_plan_steps(db, now=first_notify["scheduled_for"])
+    process_due_plan_steps(db, now=first_attempt["scheduled_for"])
+
+    outbox_row = db.execute(
+        "SELECT payload FROM outbox WHERE payload->>'cycle_id' = %s", ("CYC-NOPAYER",)
+    ).fetchone()
+    assert outbox_row is not None
+    payload = outbox_row["payload"]
+    assert payload["issuer_code"] == "ISS01"  # known from the mandate regardless
+    assert payload["mean_balance"] is None
+    assert payload["balance_volatility"] is None
+    assert payload["credit_day"] is None
+
+
 def test_outbox_retries_on_rail_5xx_then_delivers(db: Conn, simulator_base_url: str) -> None:
     _seed_mandate_and_cycle(db, "CYC-5XX")
     _fail_first_attempt(db, "CYC-5XX")
