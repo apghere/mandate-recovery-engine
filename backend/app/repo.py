@@ -12,6 +12,49 @@ from psycopg.types.json import Json
 from app.db import Conn
 
 
+def upsert_payer(
+    conn: Conn,
+    *,
+    payer_id: str,
+    segment: str,
+    credit_day: int,
+    mean_balance: float,
+    balance_volatility: float,
+    issuer_code: str,
+    chronic_fail_propensity: float,
+    annoyance_sensitivity: float,
+    mandate_amount: float,
+    split: str,
+) -> None:
+    conn.execute(
+        """
+        INSERT INTO payers (id, segment, credit_day, mean_balance, balance_volatility,
+                             issuer_code, chronic_fail_propensity, annoyance_sensitivity,
+                             mandate_amount, split)
+        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s)
+        ON CONFLICT (id) DO UPDATE SET
+            segment = EXCLUDED.segment,
+            credit_day = EXCLUDED.credit_day,
+            mean_balance = EXCLUDED.mean_balance,
+            balance_volatility = EXCLUDED.balance_volatility,
+            issuer_code = EXCLUDED.issuer_code,
+            chronic_fail_propensity = EXCLUDED.chronic_fail_propensity,
+            annoyance_sensitivity = EXCLUDED.annoyance_sensitivity,
+            mandate_amount = EXCLUDED.mandate_amount,
+            split = EXCLUDED.split
+        """,
+        (
+            payer_id, segment, credit_day, mean_balance, balance_volatility, issuer_code,
+            chronic_fail_propensity, annoyance_sensitivity, mandate_amount, split,
+        ),
+    )
+
+
+def get_payer(conn: Conn, payer_id: str) -> dict[str, Any] | None:
+    row = conn.execute("SELECT * FROM payers WHERE id = %s", (payer_id,)).fetchone()
+    return dict(row) if row is not None else None
+
+
 def insert_event(
     conn: Conn,
     *,
@@ -141,14 +184,15 @@ def insert_plan_step(
     step_type: str,
     scheduled_for: datetime,
     p_success: float | None = None,
+    covers_debit_at: datetime | None = None,
 ) -> int:
     row = conn.execute(
         """
-        INSERT INTO plan_steps (plan_id, step_type, scheduled_for, p_success)
-        VALUES (%s, %s, %s, %s)
+        INSERT INTO plan_steps (plan_id, step_type, scheduled_for, p_success, covers_debit_at)
+        VALUES (%s, %s, %s, %s, %s)
         RETURNING id
         """,
-        (plan_id, step_type, scheduled_for, p_success),
+        (plan_id, step_type, scheduled_for, p_success, covers_debit_at),
     ).fetchone()
     assert row is not None
     step_id: int = row["id"]

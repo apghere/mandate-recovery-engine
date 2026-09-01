@@ -33,7 +33,6 @@ from app.domain.types import (
     CaseState,
     NoticeRecord,
 )
-from app.policies.fixed import NOTICE_LEAD_DAYS
 
 # Phase 3 simplifications, documented rather than silently assumed: no
 # per-merchant contact-cap config, no quiet-hours calendar, no kill-switch
@@ -163,7 +162,25 @@ def _process_notify_step(
             result.notified, result.notify_denied + 1, result.dispatched, result.attempt_denied
         )
 
-    covers_debit_at = step["scheduled_for"] + timedelta(days=NOTICE_LEAD_DAYS)
+    # The exact attempt this notice covers, set by whichever policy built
+    # the plan (docs §I.10's freshness check is an exact covers_debit_at
+    # match, not "within N days of the most recent notify" — see
+    # app/policies/fixed.py's ScheduledStep docstring for why this can't
+    # be assumed as a fixed offset for every policy). A NOTIFY step with
+    # no covers_debit_at means the plan notified but the DP never actually
+    # scheduled the attempt it was for (e.g. it decided to stop right
+    # after) — nothing to cover, so no notification is sent.
+    covers_debit_at = step["covers_debit_at"]
+    if covers_debit_at is None:
+        repo.mark_plan_step(conn, step["id"], status="done")
+        repo.insert_audit(
+            conn, actor="system", cycle_id=cycle["id"], action="notify_orphaned",
+            detail={"reason": "no attempt was ultimately scheduled for this notice"},
+        )
+        return TickResult(
+            result.notified, result.notify_denied, result.dispatched, result.attempt_denied
+        )
+
     body = (
         f"Your payment of Rs.{cycle['amount']} for mandate {cycle['mandate_id']} "
         f"will be attempted on {covers_debit_at.isoformat()}. Reply STOP to opt out."

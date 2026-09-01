@@ -27,6 +27,13 @@ POLICY_VERSION = "P0-fixed-schedule-v1"
 class ScheduledStep:
     step_type: str  # "notify" | "attempt"
     scheduled_for: datetime
+    # Only meaningful for "notify" steps: the exact attempt time this
+    # notice covers (docs §I.10's freshness check is an *exact* match, not
+    # "within N days of the most recent notify"). Explicit rather than
+    # assumed, because not every policy pairs notify with an attempt at a
+    # fixed offset — see app/policies/mre.py, which is free to notify
+    # early and wait for a better slot.
+    covers_debit_at: datetime | None = None
 
 
 def compute_fixed_schedule(due_date: date) -> list[ScheduledStep]:
@@ -34,14 +41,13 @@ def compute_fixed_schedule(due_date: date) -> list[ScheduledStep]:
     for offset in ATTEMPT_OFFSET_DAYS:
         attempt_day = due_date + timedelta(days=offset)
         notify_day = attempt_day - timedelta(days=NOTICE_LEAD_DAYS)
+        attempt_at = datetime.combine(attempt_day, time(ATTEMPT_HOUR, tzinfo=UTC))
         steps.append(
             ScheduledStep(
-                "notify", datetime.combine(notify_day, time(ATTEMPT_HOUR, tzinfo=UTC))
+                "notify",
+                datetime.combine(notify_day, time(ATTEMPT_HOUR, tzinfo=UTC)),
+                covers_debit_at=attempt_at,
             )
         )
-        steps.append(
-            ScheduledStep(
-                "attempt", datetime.combine(attempt_day, time(ATTEMPT_HOUR, tzinfo=UTC))
-            )
-        )
+        steps.append(ScheduledStep("attempt", attempt_at))
     return steps

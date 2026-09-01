@@ -18,7 +18,19 @@ engages once that first attempt's outcome is known:
   * `debit.failed` (seq 1): THIS is what docs §G.1's "a merchant's failed
     mandate cycle arrives as an event" refers to, and what
     `domain/fsm.py`'s DUE -[CYCLE_FAILED]-> DIAGNOSING -> ... path models.
-    MRE takes over from here for the remaining budget (seq 2-4).
+    MRE (or `fixed`/`greedy`) takes over from here for the remaining
+    budget (seq 2-4).
+
+Policy selection: `ingest_debit_failed` takes a `compute_plan` callback
+(cycle due_date -> PlanChoice), defaulting to the P0 fixed baseline. This
+keeps ingest.py itself agnostic about *which* policy produced a schedule,
+or how — app/policies/mre.py's and app/policies/greedy.py's callers build
+a closure with payer/model context already bound in (see
+scripts/replay_mre.py) rather than this module needing to know anything
+about payers or trained models. A PlanChoice with `immediate_stop=True`
+(the DP deciding, at the root, that no attempt is worth making — docs
+§W2) routes straight to ESCALATING -> AWAITING_MANUAL instead of
+SCHEDULED, with zero further attempts consumed.
 
 `mandate.revoked` / `notification.opted_out` ingestion is deferred to the
 Day-4 safety/chaos work (docs §N Day 4) where they're exercised directly.
@@ -32,7 +44,8 @@ durable and visible to other connections.
 """
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Callable
+from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any
 
@@ -40,7 +53,8 @@ from app import repo
 from app.db import Conn
 from app.domain.fsm import Event, transition
 from app.domain.types import CaseState
-from app.policies.fixed import POLICY_VERSION, compute_fixed_schedule
+from app.policies.fixed import POLICY_VERSION as FIXED_POLICY_VERSION
+from app.policies.fixed import ScheduledStep, compute_fixed_schedule
 
 
 @dataclass(frozen=True)
@@ -155,8 +169,31 @@ def ingest_debit_succeeded(conn: Conn, event: DebitOutcomeEvent) -> IngestResult
     return IngestResult(accepted=inserted, duplicate=not inserted)
 
 
-def ingest_debit_failed(conn: Conn, event: DebitOutcomeEvent) -> IngestResult:
-    """First attempt (seq 1) failed — MRE engages for the remaining budget."""
+@dataclass(frozen=True)
+class PlanChoice:
+    policy_version: str
+    steps: list[ScheduledStep] = field(default_factory=list)
+    immediate_stop: bool = False
+    expected_value: float = 0.0
+    solver_ms: float = 0.0
+
+
+def _default_fixed_plan(due_date: date) -> PlanChoice:
+    return PlanChoice(
+        policy_version=FIXED_POLICY_VERSION,
+        steps=compute_fixed_schedule(due_date),
+        immediate_stop=False,
+    )
+
+
+def ingest_debit_failed(
+    conn: Conn,
+    event: DebitOutcomeEvent,
+    *,
+    compute_plan: Callable[[date], PlanChoice] = _default_fixed_plan,
+) -> IngestResult:
+    """First attempt (seq 1) failed — the chosen policy engages for the
+    remaining budget. See module docstring for `compute_plan`."""
     with conn.transaction():
         inserted = repo.insert_event(
             conn,
@@ -183,41 +220,62 @@ def ingest_debit_failed(conn: Conn, event: DebitOutcomeEvent) -> IngestResult:
                 executed_at=event.occurred_at,
             )
 
+            cycle = repo.get_cycle(conn, event.cycle_id)
+            assert cycle is not None
+            plan_choice = compute_plan(cycle["due_date"])
+
             state = CaseState.DUE
             state = transition(state, Event.CYCLE_FAILED)
             state = transition(state, Event.CAUSE_NORMALIZED)
-            state = transition(state, Event.PLAN_READY)
-            assert state == CaseState.SCHEDULED
-            repo.update_cycle_state(conn, event.cycle_id, state=state.value, attempts_used=1)
 
-            cycle = repo.get_cycle(conn, event.cycle_id)
-            assert cycle is not None
-            plan_id = repo.insert_plan(
-                conn,
-                cycle_id=event.cycle_id,
-                model_version=POLICY_VERSION,
-                feature_hash="n/a",
-                expected_value=0.0,
-                stop_reason=None,
-                solver_ms=0,
-            )
-            for step in compute_fixed_schedule(cycle["due_date"]):
-                repo.insert_plan_step(
+            if plan_choice.immediate_stop:
+                state = transition(state, Event.STOP_AND_ESCALATE)
+                state = transition(state, Event.ESCALATED)
+                assert state == CaseState.AWAITING_MANUAL
+                repo.update_cycle_state(conn, event.cycle_id, state=state.value, attempts_used=1)
+                repo.insert_audit(
                     conn,
-                    plan_id=plan_id,
-                    step_type=step.step_type,
-                    scheduled_for=step.scheduled_for,
+                    actor="system",
+                    cycle_id=event.cycle_id,
+                    action="stopped_and_escalated",
+                    detail={
+                        "policy": plan_choice.policy_version,
+                        "expected_value": plan_choice.expected_value,
+                        "first_attempt_intent_id": intent_id,
+                    },
                 )
-            repo.insert_audit(
-                conn,
-                actor="system",
-                cycle_id=event.cycle_id,
-                action="plan_created",
-                detail={
-                    "plan_id": plan_id,
-                    "policy": POLICY_VERSION,
-                    "first_attempt_intent_id": intent_id,
-                },
-            )
+            else:
+                state = transition(state, Event.PLAN_READY)
+                assert state == CaseState.SCHEDULED
+                repo.update_cycle_state(conn, event.cycle_id, state=state.value, attempts_used=1)
+
+                plan_id = repo.insert_plan(
+                    conn,
+                    cycle_id=event.cycle_id,
+                    model_version=plan_choice.policy_version,
+                    feature_hash="n/a",
+                    expected_value=plan_choice.expected_value,
+                    stop_reason=None,
+                    solver_ms=int(round(plan_choice.solver_ms)),
+                )
+                for step in plan_choice.steps:
+                    repo.insert_plan_step(
+                        conn,
+                        plan_id=plan_id,
+                        step_type=step.step_type,
+                        scheduled_for=step.scheduled_for,
+                        covers_debit_at=step.covers_debit_at,
+                    )
+                repo.insert_audit(
+                    conn,
+                    actor="system",
+                    cycle_id=event.cycle_id,
+                    action="plan_created",
+                    detail={
+                        "plan_id": plan_id,
+                        "policy": plan_choice.policy_version,
+                        "first_attempt_intent_id": intent_id,
+                    },
+                )
     conn.commit()
     return IngestResult(accepted=inserted, duplicate=not inserted)

@@ -1,4 +1,4 @@
-.PHONY: dev check lint typecheck test up down migrate seed replay-fixed train bench
+.PHONY: dev check lint typecheck test up down migrate seed seed-payers replay-fixed replay-compare train bench
 
 dev:
 	python3 -m venv .venv
@@ -31,8 +31,14 @@ migrate:
 seed:
 	.venv/bin/python -m data.generator
 
+seed-payers:
+	.venv/bin/python -m scripts.seed_payers
+
 replay-fixed:
 	.venv/bin/python -m scripts.replay_fixed
+
+replay-compare:
+	.venv/bin/python -m scripts.replay_compare
 
 train:
 	.venv/bin/python -m scripts.train

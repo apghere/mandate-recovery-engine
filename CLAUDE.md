@@ -111,9 +111,49 @@ fixed constants, not the eventual logistic hazard model (Phase 6/7); the
 mandate-continuation term (`gamma * expected_future_value`) is an input
 the planner accepts but doesn't compute.
 
-Not yet done, and meaningfully separate follow-on work: wiring the
-planner as a live `mre` policy alongside P0 `fixed` (plus a `greedy`
-ablation) — bridging real DB case state -> MandateSnapshot -> the trained
-Phase 4 model's calibrated probabilities -> planner input, registering it
-in the worker/ingestion path the way docs §O.4's Phase 5 prompt describes.
-That's the natural next chunk, not a quick addendum to this one.
+Phase 5 fully done: `mre` and `greedy` are now live policies, wired into
+real ingestion. New: migrations/0002_payers.sql (+ `make seed-payers`) —
+payer attributes now persist in Postgres, not just transiently in
+data.generator; app/ml/inference.py bridges the trained Phase 4 artifact
+to a real payer's context, scoring calibrated P(success) per slot;
+app/policies/mre.py walks the DP's optimal policy table into the same
+(step_type, scheduled_for) shape app/policies/fixed.py produces, so the
+existing Phase 3 worker/outbox needs zero changes to execute it; a real
+"assume failure" simplification, documented in mre.py's module docstring,
+lets this reuse Phase 3's pre-commit-schedule infrastructure instead of
+needing a dynamically re-planning worker (deferred to Phase 7+).
+app/policies/greedy.py is the ablation docs §F.1 calls for — same
+calibrated model, naive one-step-lookahead timing, no DP. ingest.py now
+routes a DP root-action of STOP_AND_ESCALATE straight to
+ESCALATING -> AWAITING_MANUAL with zero attempts consumed (docs §W2),
+verified end-to-end against live Postgres.
+
+Found and fixed a second real bug, this one via scripts/replay_compare.py
+actually running MRE against 300 real mandates end-to-end — not
+hypothetical: every one of MRE's scheduled attempts was being denied
+RBI_NOTICE_NOT_SATISFIED, because worker.py hardcoded "a notify always
+covers the attempt exactly 1 day later" (true for `fixed`, which always
+pairs them adjacently, so this went unnoticed since Phase 3) — false for
+MRE, whose DP is free to notify early and IDLE, waiting for a better slot,
+before attempting. Fixed properly: migrations/0003 adds
+plan_steps.covers_debit_at, set explicitly by whichever policy builds the
+schedule (fixed pairs it immediately; mre tracks the pending notify index
+through its walk and back-fills it once it knows which attempt actually
+uses that notice) rather than assumed by the worker. Confirmed via
+scripts/replay_compare.py before/after: MRE went from 225/300 recovered
+(75 wrongly abandoned) to 296/300, matching the baselines exactly.
+
+Comparative smoke result (scripts/replay_compare.py, `make
+replay-compare` — NOT the rigorous paired Day-5 benchmark; independent
+draws per policy, not a shared realised world, documented as such in the
+script): all three recover the same count (296/300) on this batch, but
+`mre` and `greedy` recover ~24-25% more rupees than `fixed` with
+fewer-or-equal attempts. MRE vs greedy specifically are close in this
+run — reported honestly as inconclusive at this scale/parameterization
+rather than stretched into a bigger claim; resolving that properly (more
+samples, bootstrap CIs, a true paired world) is exactly what Phase 8
+exists for, not skipped, deferred on purpose.
+
+Next: Phase 6 (LLM decline-string normaliser + notice generator +
+validator) or Phase 7 (chaos suite, audit ledger completeness) — both
+independent of each other, pick based on remaining time.
