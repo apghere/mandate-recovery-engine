@@ -47,7 +47,7 @@ select = ["E", "F", "I", "UP", "B"]
 python_version = "3.12"
 strict = true
 mypy_path = "backend"
-files = ["backend/app", "data", "simulator", "scripts"]
+files = ["backend/app", "data", "simulator", "scripts", "evaluation"]
 
 # scikit-learn ships no type stubs / py.typed marker. matplotlib has ships
 # its own (py.typed) so isn't listed here.

@@ -1,4 +1,4 @@
-.PHONY: dev check lint typecheck test up down migrate seed seed-payers replay-fixed replay-compare train demo-predictability bench
+.PHONY: dev check lint typecheck test up down migrate seed seed-payers replay-fixed replay-compare train demo-predictability bench bench-sensitivity
 
 dev:
 	python3 -m venv .venv
@@ -6,7 +6,7 @@ dev:
 	.venv/bin/pip install -q -e ".[dev]"
 
 lint:
-	.venv/bin/ruff check backend data simulator scripts tests
+	.venv/bin/ruff check backend data simulator scripts tests evaluation
 
 typecheck:
 	.venv/bin/mypy
@@ -47,6 +47,7 @@ demo-predictability:
 	.venv/bin/python -m scripts.demo_predictability
 
 bench:
-	@echo "bench: not implemented yet (Phase 8 — paired multi-policy evaluation harness)"
-	@echo "For the Phase 3 single-policy smoke replay, use: make replay-fixed"
-	@exit 1
+	.venv/bin/python -m evaluation.runner --split dev
+
+bench-sensitivity:
+	.venv/bin/python -m evaluation.runner --split dev --sensitivity
