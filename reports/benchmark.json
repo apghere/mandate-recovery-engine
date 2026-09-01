@@ -1,0 +1,90 @@
+{
+  "split": "test",
+  "n_mandates": 500,
+  "n_boot": 5000,
+  "generated_at": "2026-09-01T18:28:38.752464+00:00",
+  "summary": [
+    {
+      "policy": "fixed",
+      "n": 500,
+      "recovered": 481,
+      "recovery_rate": 0.962,
+      "rupees_recovered": 415700.1,
+      "attempts_used": 685
+    },
+    {
+      "policy": "greedy",
+      "n": 500,
+      "recovered": 473,
+      "recovery_rate": 0.946,
+      "rupees_recovered": 410329.34,
+      "attempts_used": 676
+    },
+    {
+      "policy": "mre",
+      "n": 500,
+      "recovered": 474,
+      "recovery_rate": 0.948,
+      "rupees_recovered": 412213.85,
+      "attempts_used": 685
+    },
+    {
+      "policy": "oracle",
+      "n": 500,
+      "recovered": 475,
+      "recovery_rate": 0.95,
+      "rupees_recovered": 411238.5,
+      "attempts_used": 682
+    }
+  ],
+  "paired_comparisons": [
+    {
+      "a": "fixed",
+      "b": "greedy",
+      "mean_gap_rupees_per_payer": 10.741520000000001,
+      "ci_lo": 1.2821935000000002,
+      "ci_hi": 22.8955815,
+      "significant": true
+    },
+    {
+      "a": "fixed",
+      "b": "mre",
+      "mean_gap_rupees_per_payer": 6.9725,
+      "ci_lo": 1.68192,
+      "ci_hi": 13.862065499999996,
+      "significant": true
+    },
+    {
+      "a": "fixed",
+      "b": "oracle",
+      "mean_gap_rupees_per_payer": 8.923200000000001,
+      "ci_lo": 0.386,
+      "ci_hi": 20.26010399999999,
+      "significant": true
+    },
+    {
+      "a": "greedy",
+      "b": "mre",
+      "mean_gap_rupees_per_payer": -3.7690200000000003,
+      "ci_lo": -16.121585999999997,
+      "ci_hi": 6.139031499999982,
+      "significant": false
+    },
+    {
+      "a": "greedy",
+      "b": "oracle",
+      "mean_gap_rupees_per_payer": -1.8183200000000004,
+      "ci_lo": -9.279484000000002,
+      "ci_hi": 5.2224935,
+      "significant": false
+    },
+    {
+      "a": "mre",
+      "b": "oracle",
+      "mean_gap_rupees_per_payer": 1.9506999999999999,
+      "ci_lo": -4.55278,
+      "ci_hi": 12.00102,
+      "significant": false
+    }
+  ]
+}

@@ -6,6 +6,7 @@ scripts/replay_compare.py already exercise, so it isn't duplicated here.
 """
 from __future__ import annotations
 
+import json
 from datetime import date, timedelta
 
 from data.generator import Payer
@@ -15,9 +16,12 @@ from evaluation.runner import (
     _amount_metric,
     _due_at_for,
     _due_date_for,
+    _paired_comparison_rows,
     _recovered_metric,
+    _summary_rows,
     bootstrap_ci,
     paired_diffs,
+    write_report,
 )
 
 
@@ -113,3 +117,49 @@ def test_bootstrap_ci_a_clear_positive_gap_is_significant() -> None:
     point, lo, _hi = bootstrap_ci(diffs, n_boot=2000)
     assert point > 0
     assert lo > 0  # CI excludes zero -> "significant" in the runner's own table
+
+
+def _results_fixture() -> dict[str, dict[str, CaseOutcome]]:
+    return {
+        "fixed": {
+            "P1": CaseOutcome(recovered=True, amount=500.0, attempts=2, state="RECOVERED"),
+            "P2": CaseOutcome(recovered=False, amount=0.0, attempts=4, state="ABANDONED"),
+        },
+        "mre": {
+            "P1": CaseOutcome(recovered=True, amount=500.0, attempts=1, state="RECOVERED"),
+            "P2": CaseOutcome(recovered=True, amount=300.0, attempts=2, state="RECOVERED"),
+        },
+    }
+
+
+def test_summary_rows_shape() -> None:
+    rows = _summary_rows(_results_fixture(), ("fixed", "mre"))
+    by_policy = {r["policy"]: r for r in rows}
+    assert by_policy["fixed"]["recovered"] == 1
+    assert by_policy["fixed"]["n"] == 2
+    assert by_policy["mre"]["recovered"] == 2
+    assert by_policy["mre"]["rupees_recovered"] == 800.0
+
+
+def test_paired_comparison_rows_shape() -> None:
+    rows = _paired_comparison_rows(_results_fixture(), ("fixed", "mre"), n_boot=200)
+    assert len(rows) == 1
+    assert rows[0]["a"] == "fixed"
+    assert rows[0]["b"] == "mre"
+    assert "mean_gap_rupees_per_payer" in rows[0]
+
+
+def test_write_report_produces_markdown_and_json(tmp_path) -> None:  # type: ignore[no-untyped-def]
+    out_dir = tmp_path / "reports"
+    write_report(
+        _results_fixture(), ("fixed", "mre"), split="dev", n_boot=200, out_dir=out_dir
+    )
+    md = (out_dir / "BENCHMARK.md").read_text()
+    assert "# Benchmark report" in md
+    assert "fixed" in md and "mre" in md
+
+    payload = json.loads((out_dir / "benchmark.json").read_text())
+    assert payload["split"] == "dev"
+    assert payload["n_mandates"] == 2
+    assert len(payload["summary"]) == 2
+    assert len(payload["paired_comparisons"]) == 1
