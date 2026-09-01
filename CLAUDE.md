@@ -258,6 +258,84 @@ half-built here as bare config flags nobody can flip. merchant_name in
 notices still falls back to merchant_id (no display-name column yet,
 noted in worker.py).
 
-Next: Phase 8, the rigorous paired benchmark — explicitly "never cut" per
-docs §I.17/§B.3. Do not let anything else run long enough to threaten it
-with 5 Sept as the hard deadline.
+Phase 8 in progress: the rigorous paired benchmark. Before building it,
+found and fixed a real gap that would have quietly undermined it: the live
+simulator HTTP path (what every replay script and the real worker
+actually calls) was NOT the timing-sensitive model Phase 4 built. Two
+compounding bugs — simulator/app.py's ExecuteRequest never carried
+mean_balance/balance_volatility/credit_day at all (decide_outcome always
+took its flat fallback), and worker.py's outbox payload hardcoded
+payer_id=None and omitted issuer_code/chronic_fail_propensity entirely for
+every worker-dispatched attempt (sequences 2-4 — exactly the ones a
+policy actually schedules). Net effect: the trained success model was
+correctly built with full timing context (app/ml/corpus.py always used
+it), but the mechanism it was predicting had, until now, never actually
+varied with what it predicted. Fixed in both places; also reseeded outcome
+draws on (payer_id, scheduled_for, sequence_no) instead of idempotency_key
+so two different policies attempting for the same real payer at the same
+real moment see the identical draw — a shared realised world, required
+for Phase 8's paired design to mean anything. 10 new tests. Full details
+and the honest before/after replay-fixed numbers (492/500, 1.56M rupees ->
+469/500, 467K rupees — expected, not a regression) are in the commit
+message.
+
+This mattered for the numbers already reported after Phase 5:
+scripts/replay_compare.py's ~24-25% MRE/greedy edge over fixed was
+measured *before* this fix and is now known to be partly an artifact of
+the bug (flat probabilities meant every policy's retries had the same
+±0.78 chance regardless of timing) rather than a clean measurement of
+planning skill. Not hidden — corrected.
+
+evaluation/runner.py built: same-realised-world paired batches across
+fixed/greedy/mre/oracle, a nonparametric paired bootstrap 95% CI on the
+rupee gap between every policy pair, an oracle (P3) that runs the
+identical DP solver fed the *true* simulator probability instead of the
+model's estimate (a perfect-information ceiling), an E_MANUAL sensitivity
+sweep, and — closing a gap scripts/replay_fixed.py's own docstring
+already flagged — a realistic per-payer spread of due dates instead of
+one shared date (a shared date put every payer's 3 remaining attempts in
+the identical 14-day window, structurally capping how much timing skill
+could show up regardless of policy). 11 new unit tests on the pure pieces
+(bootstrap_ci, paired_diffs, the due-date spread). `make bench` (dev,
+n=300) and `make bench-sensitivity` are wired up.
+
+A validation run on `dev` (n=500, not yet the final locked number — see
+below) after all of the above:
+
+    policy    recovered  rate    rupees       attempts
+    fixed     473        94.6%   493,824.01   670
+    greedy    467        93.4%   491,645.96   672
+    mre       476        95.2%   500,562.70   682
+    oracle    476        95.2%   498,514.74   681
+
+    mre vs greedy: -17.83 rupees/payer, 95% CI [-35.73, -3.48] -- significant
+    mre vs fixed:  -13.48 rupees/payer, 95% CI [-32.45,   1.10] -- not quite
+    mre vs oracle:  +4.10 rupees/payer, 95% CI [ -5.83,  17.45] -- not significant
+
+Reported honestly, not spun: this is a real but modest edge (~1.4% more
+rupees than fixed, statistically significant against greedy specifically),
+not the ~25% figure from the pre-fix smoke test. mre landing essentially
+on top of oracle (and even fractionally above it in this one realized
+sample — sampling noise on a finite batch, not a contradiction, since
+oracle is optimal in expectation under the true probabilities, not
+guaranteed to win every realized draw) is itself informative: at this
+population/horizon/budget, the trained model already captures nearly all
+the achievable timing signal — the remaining headroom above fixed is
+small because roughly half of any batch's payers have a due date placed
+such that their credit_day falls outside the reachable 14-day/3-attempt
+window no matter how smart the policy is. This is a legitimate structural
+property of the problem (real NPCI attempt cap + real retry horizon), not
+a benchmark artifact — matches docs §I.17's standing instruction that a
+credible negative/modest result outranks a fabricated positive one.
+
+Deliberately NOT yet run: the sealed `test` split. `--split test` exists
+and works, but the split is meant to be touched exactly once
+(docs §J.5/§T) — holding off until the harness itself needs no further
+changes, then running it once, by hand, for the number that goes in the
+final report.
+
+Next: decide whether to spend more time tightening Phase 8 (larger n for
+narrower CIs, the E_MANUAL sensitivity sweep's actual output, then the one
+final `--split test` run) or move to Phase 9 (dashboard, deploy, README) —
+raised with the user rather than decided unilaterally, given how close
+5 Sept is.
