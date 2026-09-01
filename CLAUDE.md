@@ -196,16 +196,68 @@ already-correct components to something real.
 deterministic, no network in CI. 160 tests green (was 121 at the end of
 Phase 5).
 
-Not done, correctly deferred to Phase 7: mandate.revoked /
-notification.opted_out ingestion, webhook HMAC signature verification on
-the real /events endpoint, the full chaos suite (duplicate/delayed/out-
-of-order events, malformed LLM output now that there's a real LLM output
-shape to malform, mid-plan revocation) beyond the handful of chaos-ish
-tests that already exist. merchant_name in notices currently falls back
-to merchant_id — no separate display-name column in the schema yet,
-noted where it happens in worker.py, cheap to fix whenever it matters.
+Phase 7 (event completeness + chaos suite + webhook signing) done.
 
-Next: Phase 7 (policy wiring completeness, chaos suite, webhook signing)
-or Phase 8 (the rigorous paired benchmark) — Phase 8 is explicitly
-"never cut" per docs §I.17/§B.3, so don't let Phase 7 run long enough to
-threaten it.
+mandate.revoked / notification.opted_out ingestion (app/ingest.py):
+mandate-scoped, not cycle-scoped — repo.non_terminal_cycles_for_mandate +
+ingest._abandon_in_flight_cycles resolve every in-flight cycle on the
+mandate through the FSM's existing MANDATE_REVOKED/OPTED_OUT edges
+(domain/fsm.py already had them, unused until now) immediately, rather
+than relying on the policy gate to slowly deny its way through every
+remaining plan_step and eventually get swept under the dishonest
+"plan_exhausted" label. AWAITING_MANUAL + MANDATE_REVOKED deliberately has
+no FSM edge (a human is already on it) — that asymmetry is real, not an
+oversight, and is commented where the code checks for it.
+
+Found and fixed two more real gaps while wiring this in (found by writing
+the chaos tests, not by inspection):
+
+1. Out-of-order webhook delivery — a debit outcome arriving before its
+   mandate.cycle.due (docs §M.1's chaos matrix: webhooks are at-least-once,
+   NOT ordered) — used to either hit a raw AssertionError or leak a
+   Postgres ForeignKeyViolation. Now app.ingest.UnknownCycleError, raised
+   before any write inside the same transaction as the event insert (so a
+   legitimate retry after the real cycle.due lands isn't falsely treated as
+   a duplicate), surfaced over HTTP as a clean 409.
+
+2. worker.py's _handle_delivered blindly assumed the cycle was still
+   EXECUTING whenever the rail finally answered. An attempt already
+   dispatched to the outbox can't be recalled from the rail — so a
+   mandate.revoked arriving between dispatch and the rail's answer could
+   silently resurrect an already-ABANDONED cycle back to RECOVERED on a
+   late "success". Now guarded: the cycle's actual current state is
+   checked before applying the EXECUTING-rooted FSM transition; the rail
+   outcome is still recorded honestly either way (a distinct audit action,
+   attempt_outcome_after_cycle_resolved, makes the mismatch visible rather
+   than silent).
+
+Webhook signing (app/api/app.py): HMAC-SHA256 over the raw request body,
+hmac.compare_digest, same RAZORPAY_WEBHOOK_SECRET mechanism
+scripts/webhook_capture.py's spike tool already proved against real
+Razorpay deliveries. When no secret is configured (local dev, CI, replay
+scripts) unsigned requests are accepted — a documented degraded mode, not
+a silent gap, since refusing to boot without a secret is the wrong failure
+mode for a judge's local `make up`.
+
+13 new tests (tests/integration/test_chaos.py, tests/integration/
+test_api.py): out-of-order delivery for both debit outcome types, mid-plan
+revocation/opt-out cancelling pending steps, idempotency, revocation on an
+already-terminal cycle (flag-only no-op), the mid-flight resurrection
+race, signature accept/reject in every configuration, the two new event
+types over real HTTP. 173 tests green (was 160). Re-ran both
+replay_fixed.py and replay_compare.py after every change in this phase —
+byte-identical to Phase 6's numbers throughout (492/500, 296/296/296).
+
+Not done, correctly deferred rather than silently dropped: the AFA
+consent flow (afa_satisfied is still always False — genuinely blocked on
+Razorpay UPI Autopay KYC, documented in
+docs/RAZORPAY_TESTMODE_FINDINGS.md, not a Phase 7 scoping choice) and the
+merchant/global kill-switch admin surface both need a real UI surface to
+be meaningful, so they move to Phase 9 (dashboard) rather than being
+half-built here as bare config flags nobody can flip. merchant_name in
+notices still falls back to merchant_id (no display-name column yet,
+noted in worker.py).
+
+Next: Phase 8, the rigorous paired benchmark — explicitly "never cut" per
+docs §I.17/§B.3. Do not let anything else run long enough to threaten it
+with 5 Sept as the hard deadline.
