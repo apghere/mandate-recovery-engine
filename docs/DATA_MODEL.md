@@ -58,6 +58,37 @@ arithmetic, so `credit_day` never needs to handle month-length edge cases.
   Not specified by §J.2; a plausible assumption for a small segment (5% of
   population) documented here rather than left silent.
 
+### `credit_day` — what it is, and what it deliberately is not
+
+`credit_day` is **simulator ground truth**, not a claim that a real
+deployment would know a real payer's payday. It exists for the same
+reason a physics simulator has ground-truth ball positions even though a
+real robot's sensors are noisy and partial: something has to generate a
+plausible world for the model to learn from, and that generating process
+is allowed to know things the model itself never sees directly.
+
+The model's feature `days_to_credit_day` (`app/ml/features.py`) is
+computed from this ground truth during training-corpus generation
+(`app/ml/corpus.py`) and, currently, also at inference time for our own
+synthetic payers (`app/ml/inference.py` reads `credit_day` back out of
+the `payers` table, which was itself seeded from this same generator —
+see `scripts/seed_payers.py`). For this project that is not a leak: our
+"real" cycles are our own synthetic payers, so nothing about a genuine
+external user is being assumed known.
+
+**If this were deployed against real payers**, this feature would need to
+be sourced differently: not asked for or assumed, but *empirically
+derived from each payer's own historical successful-debit days* —
+100% observable from Razorpay's own mandate execution history, requiring
+no additional permission, consent flow, or integration. The model would
+learn a per-payer (or per-cohort) timing pattern from **outcomes**, the
+same way it already learns from `issuer_historical_success_rate` and
+`payer_prior_success_rate` — never from a hidden ground truth about where
+or when money moves. See `docs/SIGNAL_LEGITIMACY.md` for the full
+breakdown of what a real deployment can and cannot observe, and why the
+model's actual target — P(this debit succeeds), never P(money exists) or
+P(income arrives) — is robust to this distinction by construction.
+
 ### `mean_balance` — lognormal(mu, sigma), rupees
 
 | Segment | mu (= ln(median ₹)) | sigma |
