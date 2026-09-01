@@ -27,9 +27,11 @@ from __future__ import annotations
 import hashlib
 import hmac
 from datetime import date, datetime
+from pathlib import Path
 from typing import Any, Literal
 
 from fastapi import FastAPI, HTTPException, Request
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ValidationError
 
 from app.api.dashboard import router as dashboard_router
@@ -50,6 +52,19 @@ from app.ingest import (
 
 app = FastAPI(title="Mandate Recovery Engine — ingestion API")
 app.include_router(dashboard_router)
+
+# Phase 9's dashboard (frontend/*.html — no build step, on purpose: "fresh
+# clone -> demo in three commands"). Mounted last so it never shadows the
+# /events, /cases, /metrics, /audit, /admin routes above. /reports serves
+# evaluation/runner.py's generated BENCHMARK.md/benchmark.json and
+# app/ml/calibrate.py's calibration.png for the benchmark screen.
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+if (_REPO_ROOT / "reports").is_dir():
+    app.mount("/reports", StaticFiles(directory=_REPO_ROOT / "reports"), name="reports")
+if (_REPO_ROOT / "frontend").is_dir():
+    app.mount(
+        "/dashboard", StaticFiles(directory=_REPO_ROOT / "frontend", html=True), name="dashboard"
+    )
 
 
 def _verify_signature(raw_body: bytes, signature: str | None) -> bool:

@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MRE — Benchmark</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="shared.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen">
+
+<header class="border-b border-slate-200 bg-white">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div>
+      <div class="font-semibold text-lg">Mandate Recovery Engine</div>
+      <div class="text-xs text-slate-500">Phase 8 — the rigorous paired benchmark</div>
+    </div>
+    <nav class="flex gap-4 text-sm font-medium">
+      <a href="index.html" class="text-slate-500 hover:text-slate-900 pb-1">Case detail</a>
+      <a href="benchmark.html" class="text-slate-900 border-b-2 border-slate-900 pb-1">Benchmark</a>
+      <a href="audit.html" class="text-slate-500 hover:text-slate-900 pb-1">Audit &amp; kill switch</a>
+    </nav>
+  </div>
+</header>
+
+<main class="max-w-5xl mx-auto px-4 py-6 space-y-6">
+
+  <div id="honesty" class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900"></div>
+
+  <div class="bg-white border border-slate-200 rounded-lg p-6">
+    <div class="flex items-center justify-between mb-3">
+      <h2 class="font-semibold">Summary — <span id="meta"></span></h2>
+    </div>
+    <table class="w-full text-sm">
+      <thead><tr class="text-left text-slate-500 text-xs">
+        <th class="pb-2">policy</th><th class="pb-2">recovered</th><th class="pb-2">rate</th>
+        <th class="pb-2">rupees recovered</th><th class="pb-2">attempts used</th>
+      </tr></thead>
+      <tbody id="summary-body"></tbody>
+    </table>
+  </div>
+
+  <div class="bg-white border border-slate-200 rounded-lg p-6">
+    <h2 class="font-semibold mb-3">Paired bootstrap 95% CI — mean per-payer rupee gap (A − B)</h2>
+    <table class="w-full text-sm">
+      <thead><tr class="text-left text-slate-500 text-xs">
+        <th class="pb-2">A</th><th class="pb-2">B</th><th class="pb-2">mean gap</th>
+        <th class="pb-2">95% CI</th><th class="pb-2">significant</th>
+      </tr></thead>
+      <tbody id="comparisons-body"></tbody>
+    </table>
+    <p class="text-xs text-slate-500 mt-3">
+      Same realised world across policies (shared payer/moment/attempt-number RNG seed),
+      nonparametric bootstrap over per-payer differences. "Significant" means the 95% CI
+      excludes zero.
+    </p>
+  </div>
+
+  <div class="bg-white border border-slate-200 rounded-lg p-6">
+    <h2 class="font-semibold mb-3">Success-model calibration</h2>
+    <img src="/reports/calibration.png" alt="Calibration reliability diagram"
+         class="max-w-full rounded border border-slate-200" />
+  </div>
+
+</main>
+
+<script>
+async function load() {
+  let report;
+  try {
+    report = await apiGet("/reports/benchmark.json");
+  } catch (e) {
+    document.getElementById("meta").textContent = "no report yet";
+    document.getElementById("honesty").innerHTML =
+      "No reports/benchmark.json found. Run <code>make bench</code> " +
+      "(or <code>python -m evaluation.runner --split test --sensitivity</code> " +
+      "for the final locked run) to generate one.";
+    return;
+  }
+
+  document.getElementById("meta").textContent =
+    `split=${report.split}, n=${report.n_mandates}, bootstrap resamples=${report.n_boot}`;
+
+  document.getElementById("summary-body").innerHTML = report.summary.map(r => `
+    <tr class="border-t border-slate-100">
+      <td class="py-1.5 pr-3 font-medium">${r.policy}</td>
+      <td class="py-1.5 pr-3">${r.recovered}</td>
+      <td class="py-1.5 pr-3">${(100 * r.recovery_rate).toFixed(1)}%</td>
+      <td class="py-1.5 pr-3">${fmtRupees(r.rupees_recovered)}</td>
+      <td class="py-1.5">${r.attempts_used}</td>
+    </tr>`).join("");
+
+  document.getElementById("comparisons-body").innerHTML = report.paired_comparisons.map(r => `
+    <tr class="border-t border-slate-100">
+      <td class="py-1.5 pr-3 font-medium">${r.a}</td>
+      <td class="py-1.5 pr-3">${r.b}</td>
+      <td class="py-1.5 pr-3">${fmtRupees(r.mean_gap_rupees_per_payer)}</td>
+      <td class="py-1.5 pr-3">[${fmtRupees(r.ci_lo)}, ${fmtRupees(r.ci_hi)}]</td>
+      <td class="py-1.5 ${r.significant ? 'text-emerald-700 font-medium' : 'text-slate-400'}">${r.significant ? "yes" : "no"}</td>
+    </tr>`).join("");
+
+  const fixedWins = report.paired_comparisons.some(
+    r => r.a === "fixed" && r.significant && r.mean_gap_rupees_per_payer > 0
+  );
+  document.getElementById("honesty").innerHTML = fixedWins
+    ? `<strong>Honesty note:</strong> on this locked run, the naive fixed-schedule baseline
+       recovered <em>more</em> gross rupees than MRE, greedy, and even the perfect-information
+       oracle — not the hoped-for direction, reported as measured. See CLAUDE.md's Phase 8 notes
+       and README §Evaluation for the investigation of why (the DP prices a revocation/opt-out
+       hazard cost this benchmark's single-cycle metric can't observe the benefit of).`
+    : `<strong>Honesty note:</strong> whatever the numbers above say, they are the numbers
+       (docs §I.15) — see README §Evaluation for the full methodology and its limitations.`;
+}
+load();
+</script>
+</body>
+</html>

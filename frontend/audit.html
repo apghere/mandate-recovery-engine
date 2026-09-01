@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>MRE — Audit</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="shared.js"></script>
+</head>
+<body class="bg-slate-50 text-slate-900 min-h-screen">
+
+<header class="border-b border-slate-200 bg-white">
+  <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
+    <div>
+      <div class="font-semibold text-lg">Mandate Recovery Engine</div>
+      <div class="text-xs text-slate-500">Tamper-evident audit ledger &amp; kill switch</div>
+    </div>
+    <nav class="flex gap-4 text-sm font-medium">
+      <a href="index.html" class="text-slate-500 hover:text-slate-900 pb-1">Case detail</a>
+      <a href="benchmark.html" class="text-slate-500 hover:text-slate-900 pb-1">Benchmark</a>
+      <a href="audit.html" class="text-slate-900 border-b-2 border-slate-900 pb-1">Audit &amp; kill switch</a>
+    </nav>
+  </div>
+</header>
+
+<main class="max-w-5xl mx-auto px-4 py-6 space-y-6">
+
+  <div id="chain-status" class="rounded-lg p-4 border text-sm font-medium"></div>
+
+  <div class="bg-white border border-slate-200 rounded-lg p-6">
+    <h2 class="font-semibold mb-3">Kill switches</h2>
+    <div class="flex flex-wrap items-end gap-3 mb-4">
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">Scope</label>
+        <input id="scope-input" value="global" class="border border-slate-300 rounded px-2 py-1 text-sm w-56" />
+        <div class="text-xs text-slate-400 mt-1">"global" or "merchant:&lt;merchant_id&gt;"</div>
+      </div>
+      <div>
+        <label class="block text-xs text-slate-500 mb-1">Operator</label>
+        <input id="operator-input" value="dashboard-operator" class="border border-slate-300 rounded px-2 py-1 text-sm w-48" />
+      </div>
+      <button id="activate-btn" class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium px-3 py-1.5 rounded">
+        Activate kill switch
+      </button>
+      <button id="deactivate-btn" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-medium px-3 py-1.5 rounded">
+        Deactivate
+      </button>
+    </div>
+    <div id="switches-list" class="text-sm"></div>
+  </div>
+
+  <div class="bg-white border border-slate-200 rounded-lg p-6">
+    <h2 class="font-semibold mb-3">Recent audit entries</h2>
+    <table class="w-full text-sm">
+      <thead><tr class="text-left text-slate-500 text-xs">
+        <th class="pb-2">when</th><th class="pb-2">actor</th><th class="pb-2">cycle</th>
+        <th class="pb-2">action</th><th class="pb-2">hash</th>
+      </tr></thead>
+      <tbody id="audit-body"></tbody>
+    </table>
+  </div>
+
+</main>
+
+<script>
+async function refreshAudit() {
+  const data = await apiGet("/audit?limit=100");
+
+  const statusDiv = document.getElementById("chain-status");
+  if (data.chain_valid) {
+    statusDiv.className = "rounded-lg p-4 border text-sm font-medium bg-emerald-50 border-emerald-200 text-emerald-800";
+    statusDiv.textContent = "✓ Audit chain valid — every entry's hash matches its own content plus the previous entry's hash.";
+  } else {
+    statusDiv.className = "rounded-lg p-4 border text-sm font-medium bg-rose-50 border-rose-200 text-rose-800";
+    statusDiv.textContent = `✗ Audit chain BROKEN at row id ${data.chain_broken_at_id} — tamper detected or the row was edited outside the app.`;
+  }
+
+  const switches = document.getElementById("switches-list");
+  switches.innerHTML = data.active_kill_switches.length
+    ? data.active_kill_switches.map(s => `
+        <div class="flex items-center gap-2 py-1">
+          <span class="inline-block w-2 h-2 rounded-full bg-rose-500"></span>
+          <span class="font-medium">${s.scope}</span>
+          <span class="text-slate-400 text-xs">set by ${s.set_by} at ${fmtDateTime(s.set_at)}</span>
+        </div>`).join("")
+    : `<div class="text-slate-500">No kill switches active — the system is live.</div>`;
+
+  document.getElementById("audit-body").innerHTML = data.recent_entries.map(a => `
+    <tr class="border-t border-slate-100">
+      <td class="py-1.5 pr-3 whitespace-nowrap">${fmtDateTime(a.at)}</td>
+      <td class="py-1.5 pr-3">${a.actor}</td>
+      <td class="py-1.5 pr-3 font-mono text-xs">${a.cycle_id ?? "—"}</td>
+      <td class="py-1.5 pr-3">${a.action}</td>
+      <td class="py-1.5 font-mono text-xs text-slate-400" title="${a.hash}">${a.hash.slice(0, 10)}…</td>
+    </tr>`).join("");
+}
+
+async function toggle(active) {
+  const scope = document.getElementById("scope-input").value.trim();
+  const set_by = document.getElementById("operator-input").value.trim() || "dashboard-operator";
+  if (!scope) return;
+  await apiPost("/admin/kill-switches", { scope, active, set_by });
+  await refreshAudit();
+}
+
+document.getElementById("activate-btn").addEventListener("click", () => toggle(true));
+document.getElementById("deactivate-btn").addEventListener("click", () => toggle(false));
+
+refreshAudit().catch(e => {
+  document.getElementById("chain-status").textContent = "Error loading audit data: " + e.message;
+  document.getElementById("chain-status").className = "rounded-lg p-4 border text-sm font-medium bg-rose-50 border-rose-200 text-rose-800";
+});
+</script>
+</body>
+</html>
