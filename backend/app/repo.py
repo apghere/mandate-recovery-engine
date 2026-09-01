@@ -436,3 +436,182 @@ def notices_covering(conn: Conn, cycle_id: str) -> list[dict[str, Any]]:
         "SELECT sent_at, covers_debit_at FROM notifications WHERE cycle_id = %s", (cycle_id,)
     ).fetchall()
     return [dict(r) for r in rows]
+
+
+# --- Phase 9: dashboard reads (docs FR-12) --------------------------------
+
+
+def list_cycles(
+    conn: Conn, *, state: str | None = None, limit: int = 50, offset: int = 0
+) -> list[dict[str, Any]]:
+    rows = conn.execute(
+        """
+        SELECT c.*, m.merchant_id, m.payer_id, m.issuer_code, m.rail
+        FROM cycles c JOIN mandates m ON m.id = c.mandate_id
+        WHERE %(state)s::text IS NULL OR c.state = %(state)s
+        ORDER BY c.due_date DESC, c.id
+        LIMIT %(limit)s OFFSET %(offset)s
+        """,
+        {"state": state, "limit": limit, "offset": offset},
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def count_cycles(conn: Conn, *, state: str | None = None) -> int:
+    row = conn.execute(
+        "SELECT count(*) AS n FROM cycles WHERE %(state)s::text IS NULL OR state = %(state)s",
+        {"state": state},
+    ).fetchone()
+    assert row is not None
+    return int(row["n"])
+
+
+def latest_plan_for_cycle(conn: Conn, cycle_id: str) -> dict[str, Any] | None:
+    row = conn.execute(
+        "SELECT * FROM plans WHERE cycle_id = %s ORDER BY id DESC LIMIT 1", (cycle_id,)
+    ).fetchone()
+    return dict(row) if row is not None else None
+
+
+def plan_steps_for_plan(conn: Conn, plan_id: int) -> list[dict[str, Any]]:
+    rows = conn.execute(
+        "SELECT * FROM plan_steps WHERE plan_id = %s ORDER BY scheduled_for", (plan_id,)
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def attempt_intents_for_cycle(conn: Conn, cycle_id: str) -> list[dict[str, Any]]:
+    rows = conn.execute(
+        "SELECT * FROM attempt_intents WHERE cycle_id = %s ORDER BY sequence_no", (cycle_id,)
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def notifications_for_cycle(conn: Conn, cycle_id: str) -> list[dict[str, Any]]:
+    rows = conn.execute(
+        "SELECT * FROM notifications WHERE cycle_id = %s ORDER BY sent_at", (cycle_id,)
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def decisions_for_cycle(conn: Conn, cycle_id: str) -> list[dict[str, Any]]:
+    rows = conn.execute(
+        "SELECT * FROM decisions WHERE cycle_id = %s ORDER BY at", (cycle_id,)
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def audit_for_cycle(conn: Conn, cycle_id: str) -> list[dict[str, Any]]:
+    rows = conn.execute(
+        "SELECT * FROM audit_ledger WHERE cycle_id = %s ORDER BY id", (cycle_id,)
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def recent_audit(conn: Conn, *, limit: int = 200) -> list[dict[str, Any]]:
+    rows = conn.execute(
+        "SELECT * FROM audit_ledger ORDER BY id DESC LIMIT %s", (limit,)
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
+def verify_audit_chain(conn: Conn) -> tuple[bool, int | None]:
+    """Recomputes the audit_ledger_chain trigger's own hash formula in SQL
+    (not reimplemented in Python — a Postgres JSONB::text cast has its own
+    canonical formatting, so only the database's own expression is
+    guaranteed to match what the trigger actually stored) and compares
+    against every stored hash. Returns (valid, first_broken_row_id)."""
+    row = conn.execute(
+        """
+        WITH ordered AS (
+            SELECT id, actor, cycle_id, action, detail, at, hash,
+                   LAG(hash) OVER (ORDER BY id) AS expected_prev_hash
+            FROM audit_ledger
+        ),
+        checked AS (
+            SELECT id, hash,
+                encode(
+                    digest(
+                        coalesce(expected_prev_hash, '') || actor || coalesce(cycle_id, '') ||
+                        action || detail::text || at::text,
+                        'sha256'
+                    ),
+                    'hex'
+                ) AS recomputed
+            FROM ordered
+        )
+        SELECT id FROM checked WHERE hash != recomputed ORDER BY id LIMIT 1
+        """
+    ).fetchone()
+    if row is None:
+        return (True, None)
+    return (False, int(row["id"]))
+
+
+def get_kill_switch(conn: Conn, scope: str) -> dict[str, Any] | None:
+    row = conn.execute(
+        "SELECT * FROM kill_switches WHERE scope = %s", (scope,)
+    ).fetchone()
+    return dict(row) if row is not None else None
+
+
+def list_kill_switches(conn: Conn) -> list[dict[str, Any]]:
+    rows = conn.execute("SELECT * FROM kill_switches WHERE active ORDER BY scope").fetchall()
+    return [dict(r) for r in rows]
+
+
+def set_kill_switch(conn: Conn, scope: str, *, active: bool, set_by: str) -> None:
+    conn.execute(
+        """
+        INSERT INTO kill_switches (scope, active, set_by, set_at) VALUES (%s, %s, %s, now())
+        ON CONFLICT (scope) DO UPDATE SET active = EXCLUDED.active, set_by = EXCLUDED.set_by,
+                                           set_at = EXCLUDED.set_at
+        """,
+        (scope, active, set_by),
+    )
+
+
+def metrics_snapshot(conn: Conn) -> dict[str, Any]:
+    """Everything GET /metrics needs, gathered in one place so the API
+    layer stays a thin formatter (docs I.11: cases by state, attempts
+    consumed, policy denials by reason code, LLM abstention rate,
+    validator rejections)."""
+    cases_by_state = {
+        r["state"]: r["n"]
+        for r in conn.execute("SELECT state, count(*) AS n FROM cycles GROUP BY state").fetchall()
+    }
+    attempts_consumed = conn.execute(
+        "SELECT count(*) AS n FROM attempt_intents WHERE executed_at IS NOT NULL"
+    ).fetchone()
+    denials_by_reason = {
+        r["reason_code"]: r["n"]
+        for r in conn.execute(
+            "SELECT reason_code, count(*) AS n FROM decisions "
+            "WHERE verdict = 'deny' GROUP BY reason_code"
+        ).fetchall()
+    }
+    cause_source_counts = {
+        r["cause_source"]: r["n"]
+        for r in conn.execute(
+            "SELECT cause_source, count(*) AS n FROM attempt_intents "
+            "WHERE cause_source IS NOT NULL GROUP BY cause_source"
+        ).fetchall()
+    }
+    notice_generated_by = {
+        r["generated_by"]: r["n"]
+        for r in conn.execute(
+            "SELECT generated_by, count(*) AS n FROM notifications GROUP BY generated_by"
+        ).fetchall()
+    }
+    validator_repaired = conn.execute(
+        "SELECT count(*) AS n FROM notifications WHERE (validator_result->>'repaired')::boolean"
+    ).fetchone()
+    assert attempts_consumed is not None and validator_repaired is not None
+    return {
+        "cases_by_state": cases_by_state,
+        "attempts_consumed": int(attempts_consumed["n"]),
+        "policy_denials_by_reason_code": denials_by_reason,
+        "cause_normalization_source_counts": cause_source_counts,
+        "notification_generated_by_counts": notice_generated_by,
+        "notification_repaired_count": int(validator_repaired["n"]),
+    }

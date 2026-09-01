@@ -32,6 +32,7 @@ from typing import Any, Literal
 from fastapi import FastAPI, HTTPException, Request
 from pydantic import BaseModel, ValidationError
 
+from app.api.dashboard import router as dashboard_router
 from app.config import get_settings
 from app.db import get_connection
 from app.ingest import (
@@ -48,6 +49,7 @@ from app.ingest import (
 )
 
 app = FastAPI(title="Mandate Recovery Engine — ingestion API")
+app.include_router(dashboard_router)
 
 
 def _verify_signature(raw_body: bytes, signature: str | None) -> bool:

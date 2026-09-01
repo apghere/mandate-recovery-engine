@@ -36,10 +36,11 @@ from app.domain.types import (
 )
 
 # Phase 3 simplifications, documented rather than silently assumed: no
-# per-merchant contact-cap config, no quiet-hours calendar, no kill-switch
-# admin surface, and no AFA consent flow yet. Each is a real mechanism in
-# domain/policy.py already — these constants just haven't been promoted to
-# real config/state. Revisit alongside the Day 4 safety work.
+# per-merchant contact-cap config, no quiet-hours calendar, and no AFA
+# consent flow yet. Each is a real mechanism in domain/policy.py already —
+# these constants just haven't been promoted to real config/state. Kill
+# switches got their real admin surface in Phase 9 (repo.get_kill_switch /
+# set_kill_switch, migrations/0004) — see _build_snapshot below.
 CONTACT_CAP_DEFAULT = 3
 OUTBOX_RETRY_BACKOFF_SECONDS = 30
 
@@ -53,6 +54,8 @@ def _build_snapshot(
         for r in notice_rows
     )
     contact_count_today = sum(1 for r in notice_rows if r["sent_at"].date() == now.date())
+    global_switch = repo.get_kill_switch(conn, "global")
+    merchant_switch = repo.get_kill_switch(conn, f"merchant:{mandate['merchant_id']}")
     return CaseSnapshot(
         state=CaseState(cycle["state"]),
         attempts_used=repo.count_attempts(conn, cycle["id"]),
@@ -65,8 +68,8 @@ def _build_snapshot(
         contact_count_today=contact_count_today,
         contact_cap=CONTACT_CAP_DEFAULT,
         quiet_hours_active=False,
-        merchant_kill_switch=False,
-        global_kill_switch=False,
+        merchant_kill_switch=bool(merchant_switch and merchant_switch["active"]),
+        global_kill_switch=bool(global_switch and global_switch["active"]),
     )
 
 
