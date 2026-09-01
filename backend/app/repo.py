@@ -121,6 +121,28 @@ def create_cycle(
     return row is not None
 
 
+def set_mandate_status(conn: Conn, mandate_id: str, *, status: str) -> None:
+    conn.execute("UPDATE mandates SET status = %s WHERE id = %s", (status, mandate_id))
+
+
+def set_mandate_opted_out(conn: Conn, mandate_id: str, *, opted_out: bool) -> None:
+    conn.execute(
+        "UPDATE mandates SET opted_out = %s WHERE id = %s", (opted_out, mandate_id)
+    )
+
+
+def non_terminal_cycles_for_mandate(conn: Conn, mandate_id: str) -> list[dict[str, Any]]:
+    """Cycles for this mandate not yet RECOVERED/ABANDONED — what
+    mandate.revoked / notification.opted_out ingestion needs to resolve
+    immediately rather than leaving them to slowly deny their way through
+    every remaining plan_step one tick at a time."""
+    rows = conn.execute(
+        "SELECT * FROM cycles WHERE mandate_id = %s AND state NOT IN ('RECOVERED', 'ABANDONED')",
+        (mandate_id,),
+    ).fetchall()
+    return [dict(r) for r in rows]
+
+
 def get_cycle(conn: Conn, cycle_id: str) -> dict[str, Any] | None:
     row = conn.execute("SELECT * FROM cycles WHERE id = %s", (cycle_id,)).fetchone()
     return dict(row) if row is not None else None

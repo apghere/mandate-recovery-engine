@@ -405,6 +405,34 @@ def _handle_delivered(
     repo.mark_plan_step(conn, payload["plan_step_id"], status="done")
 
     cycle_id = payload["cycle_id"]
+
+    # Chaos guard (Phase 7): this attempt was reserved and dispatched while
+    # the cycle was EXECUTING, but by the time the rail actually answers, a
+    # mandate.revoked/notification.opted_out event may have already
+    # resolved the cycle to ABANDONED (ingest._abandon_in_flight_cycles
+    # only cancels *pending* steps — a *dispatched* one is already in
+    # flight at the rail and can't be recalled). Blindly doing
+    # `transition(CaseState.EXECUTING, ...)` here would silently resurrect
+    # an already-terminal cycle (e.g. flip a correctly-ABANDONED cycle back
+    # to RECOVERED on a late "success"). The rail outcome is still recorded
+    # above — that's real and honest — but the cycle's own FSM state is
+    # only touched when it's actually still EXECUTING.
+    current_cycle = repo.get_cycle(conn, cycle_id)
+    assert current_cycle is not None
+    if CaseState(current_cycle["state"]) != CaseState.EXECUTING:
+        repo.insert_audit(
+            conn,
+            actor="system",
+            cycle_id=cycle_id,
+            action="attempt_outcome_after_cycle_resolved",
+            detail={
+                "outcome": outcome.outcome,
+                "raw_reason": outcome.raw_reason,
+                "cycle_state": current_cycle["state"],
+            },
+        )
+        return DrainResult(result.delivered + 1, result.retried, result.rail_denied)
+
     attempts_used = repo.count_attempts(conn, cycle_id)
     if outcome.outcome == "success":
         new_state = transition(CaseState.EXECUTING, Event.ATTEMPT_SUCCEEDED)

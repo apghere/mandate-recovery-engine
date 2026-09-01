@@ -32,8 +32,24 @@ about payers or trained models. A PlanChoice with `immediate_stop=True`
 §W2) routes straight to ESCALATING -> AWAITING_MANUAL instead of
 SCHEDULED, with zero further attempts consumed.
 
-`mandate.revoked` / `notification.opted_out` ingestion is deferred to the
-Day-4 safety/chaos work (docs §N Day 4) where they're exercised directly.
+`mandate.revoked` / `notification.opted_out` (Phase 7, docs §N Day 4):
+mandate-scoped, not cycle-scoped — a revoked mandate or an opt-out applies
+to every cycle currently in flight for it, not just whichever cycle
+happened to trigger the webhook. `_abandon_in_flight_cycles` resolves each
+non-terminal cycle through the FSM's existing MANDATE_REVOKED/OPTED_OUT
+edges (domain/fsm.py) immediately, rather than relying on the policy
+gate to slowly deny its way through every remaining plan_step one tick at
+a time and eventually get swept by `worker.sweep_exhausted_plans` under
+the dishonest label "plan_exhausted".
+
+Out-of-order delivery (docs §M.1's chaos matrix — webhooks are
+at-least-once, NOT ordered): a debit outcome for a cycle_id ingestion has
+never seen a mandate.cycle.due for raises `UnknownCycleError`, a clean,
+retryable signal — not a leaked FK-violation or an AssertionError. Because
+the check happens inside the same `with conn.transaction()` block as the
+event insert, raising here rolls back that insert too, so a retry after
+the real cycle.due event lands re-attempts cleanly instead of being
+silently treated as a false duplicate.
 
 Note on transactions: `conn.transaction()` on a non-autocommit connection
 (psycopg3's default, which this app uses throughout) only opens a
@@ -52,13 +68,24 @@ from typing import Any
 from app import repo
 from app.ai.normalizer import normalize
 from app.db import Conn
-from app.domain.fsm import Event, transition
+from app.domain.fsm import Event, legal_events, transition
 from app.domain.types import CaseState
 from app.policies.fixed import POLICY_VERSION as FIXED_POLICY_VERSION
 from app.policies.fixed import ScheduledStep, compute_fixed_schedule
 from data.generator import load_taxonomy
 
 _TAXONOMY = load_taxonomy()
+
+
+class UnknownCycleError(Exception):
+    """A debit outcome event named a cycle_id that no mandate.cycle.due has
+    ever registered. See module docstring's "Out-of-order delivery" note."""
+
+    def __init__(self, cycle_id: str) -> None:
+        super().__init__(
+            f"unknown cycle_id={cycle_id!r} — event arrived before mandate.cycle.due"
+        )
+        self.cycle_id = cycle_id
 
 
 @dataclass(frozen=True)
@@ -144,6 +171,8 @@ def ingest_debit_succeeded(conn: Conn, event: DebitOutcomeEvent) -> IngestResult
             payload={"amount": event.amount, "sequence_no": 1},
         )
         if inserted:
+            if repo.get_cycle(conn, event.cycle_id) is None:
+                raise UnknownCycleError(event.cycle_id)
             intent_id = repo.reserve_attempt_intent(
                 conn,
                 cycle_id=event.cycle_id,
@@ -209,6 +238,12 @@ def ingest_debit_failed(
             payload={"amount": event.amount, "sequence_no": 1, "raw_reason": event.raw_reason},
         )
         if inserted:
+            cycle = repo.get_cycle(conn, event.cycle_id)
+            if cycle is None:
+                raise UnknownCycleError(event.cycle_id)
+            mandate = repo.get_mandate(conn, event.mandate_id)
+            assert mandate is not None  # FK from cycles.mandate_id guarantees this
+
             intent_id = repo.reserve_attempt_intent(
                 conn,
                 cycle_id=event.cycle_id,
@@ -216,11 +251,6 @@ def ingest_debit_failed(
                 idempotency_key=f"{event.cycle_id}:seq1:{event.external_id}",
                 scheduled_for=event.occurred_at,
             )
-
-            cycle = repo.get_cycle(conn, event.cycle_id)
-            assert cycle is not None
-            mandate = repo.get_mandate(conn, event.mandate_id)
-            assert mandate is not None
 
             # Decline-string normalisation (docs §K.2): dictionary -> fuzzy
             # -> LLM -> UNKNOWN. Never raises; UNKNOWN is a correct, first-
@@ -317,3 +347,90 @@ def ingest_debit_failed(
                 )
     conn.commit()
     return IngestResult(accepted=inserted, duplicate=not inserted)
+
+
+@dataclass(frozen=True)
+class MandateLifecycleEvent:
+    external_id: str
+    mandate_id: str
+    occurred_at: datetime
+
+
+def ingest_mandate_revoked(conn: Conn, event: MandateLifecycleEvent) -> IngestResult:
+    """The mandate itself is gone (issuer/NPCI notified us) — permanent,
+    mandate-scoped, not a per-cycle decline. See module docstring."""
+    with conn.transaction():
+        inserted = repo.insert_event(
+            conn,
+            external_id=event.external_id,
+            event_type="mandate.revoked",
+            mandate_id=event.mandate_id,
+            cycle_id=None,
+            occurred_at=event.occurred_at,
+            payload={},
+        )
+        if inserted:
+            repo.set_mandate_status(conn, event.mandate_id, status="revoked")
+            _abandon_in_flight_cycles(
+                conn,
+                event.mandate_id,
+                fsm_event=Event.MANDATE_REVOKED,
+                action="mandate_revoked",
+                closed_at=event.occurred_at,
+            )
+    conn.commit()
+    return IngestResult(accepted=inserted, duplicate=not inserted)
+
+
+def ingest_notification_opted_out(conn: Conn, event: MandateLifecycleEvent) -> IngestResult:
+    """Payer used an opt-out mechanism. Mandate-scoped, matching
+    mandates.opted_out — every in-flight cycle on this mandate stops being
+    contacted/attempted, not just whichever cycle triggered the webhook."""
+    with conn.transaction():
+        inserted = repo.insert_event(
+            conn,
+            external_id=event.external_id,
+            event_type="notification.opted_out",
+            mandate_id=event.mandate_id,
+            cycle_id=None,
+            occurred_at=event.occurred_at,
+            payload={},
+        )
+        if inserted:
+            repo.set_mandate_opted_out(conn, event.mandate_id, opted_out=True)
+            _abandon_in_flight_cycles(
+                conn,
+                event.mandate_id,
+                fsm_event=Event.OPTED_OUT,
+                action="opted_out",
+                closed_at=event.occurred_at,
+            )
+    conn.commit()
+    return IngestResult(accepted=inserted, duplicate=not inserted)
+
+
+def _abandon_in_flight_cycles(
+    conn: Conn, mandate_id: str, *, fsm_event: Event, action: str, closed_at: datetime
+) -> None:
+    for cycle in repo.non_terminal_cycles_for_mandate(conn, mandate_id):
+        current_state = CaseState(cycle["state"])
+        if fsm_event not in legal_events(current_state):
+            # DUE/DIAGNOSING/PLANNING/ESCALATING are momentary states a
+            # concurrent transaction essentially never observes mid-flight
+            # (docs §H.3 — each is entered and exited within one function
+            # call); AWAITING_MANUAL + MANDATE_REVOKED has no FSM edge on
+            # purpose (domain/fsm.py) — a human is already handling it, so a
+            # later revocation doesn't silently override that in progress.
+            # The mandate-level flag change above is still real and durable
+            # even when no cycle-level transition applies here.
+            continue
+        new_state = transition(current_state, fsm_event)
+        repo.update_cycle_state(conn, cycle["id"], state=new_state.value, closed_at=closed_at)
+        repo.cancel_pending_steps_for_cycle(conn, cycle["id"], reason=action)
+        repo.insert_audit(
+            conn,
+            actor="system",
+            cycle_id=cycle["id"],
+            action=action,
+            detail={"previous_state": current_state.value},
+        )
