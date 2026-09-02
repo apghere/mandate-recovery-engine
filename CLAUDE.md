@@ -512,8 +512,39 @@ would not actually produce a low score via the live path today, and a
 demo built on it would be quietly showing something that doesn't work
 yet.
 
-Next: seed/reset script for a repeatable demo (built around the
-timing/balance-driven W2 scenario, not the cause-driven one), then a real
-browser check of the dashboard, then the Mermaid diagram export, then
-decide on deploy given the explicit "docker compose up is worth more than
-a fragile cloud deploy" guidance.
+scripts/demo_seed.py built and verified. The planned timing/balance-driven
+W2 scenario didn't survive contact with reality either: swept a real
+range of (amount, mean_balance, volatility) combinations and none of them
+made the DP choose STOP_AND_ESCALATE with E_MANUAL=150 -- only literal
+p=0.0 does, since E_manual is a fixed cost and continuing's expected value
+scales with amount (even p=0.001 beats stopping for any realistic
+mandate). So W2's curated case supplies p_success=0.0 directly to the
+real DP solver (same technique test_mre_ingestion.py already uses) and
+says so in the script's own docstring, rather than presenting it as
+something the live scorer produced unaided. Seeds CYC-0-RECOVERY (W1),
+CYC-0-HOPELESS (W2), CYC-0-BLOCKED (W3) + 40 real dev-split payers through
+the live ingestion path. `make demo-seed` wired up.
+
+Found and fixed while actually looking at the rendered dashboard, not
+just curling the API: the three curated cases sorted alphabetically
+behind all 40 background cases (CYC-BG-* < CYC-DEMO-*) -- a presenter
+would've had to scroll past 40 rows. Renamed to CYC-0-* so they sort
+first.
+
+Browser-verified all 3 screens for real (headless Chrome via CDP --
+websocket-client + requests, since chromium-cli isn't available in this
+environment): clicked into a case from the list, toggled the kill switch
+via its actual button (not a raw POST) and watched the display update
+live, confirmed the benchmark screen's honesty note correctly reflects
+the "fixed won" locked direction. Zero console errors on all three pages.
+
+Remaining Phase 9 items, in priority order given ~3 days left: Mermaid
+diagram export as a standalone file (currently only embedded in
+README.md, which likely satisfies docs P.1's requirement already --
+low priority), the deploy decision (docs' own guidance: "a flawless
+documented docker compose up is worth more than a fragile cloud deploy" --
+leaning toward not deploying anywhere and relying on the documented local
+setup + a recorded demo), docs/ENGINEERING_LOG.md (the "what broke and
+how I recovered" graded field -- CLAUDE.md itself is most of the raw
+material for this already), and the Day 7 red-team exercises from docs
+§L.3 (security review pass).
