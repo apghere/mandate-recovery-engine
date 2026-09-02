@@ -442,11 +442,24 @@ at /dashboard and /reports via FastAPI StaticFiles in api/app.py. Smoke-
 tested by hand (uvicorn + curl every page/route) — not yet visually
 reviewed in an actual browser or screenshotted.
 
-221 tests green (was 189 at the start of this Phase 9 work — 32 new: 10
-simulator-wiring-fix, 11 evaluation/runner.py, 9 dashboard, 5
-report-generation, minus overlap already counted above)
-— re-verify exact count with `make test` rather than trusting this
-arithmetic blindly.
+201 tests green (was 189 at the start of this Phase 9 work).
+
+Found and fixed one more real, time-critical bug while running `make
+test` today rather than trusting a stale green run: two integration tests
+started failing because real-world time (2026-09-02) caught up to this
+project's fixed 2026-09-01 demo/test dates. repo.insert_outbox relied on
+the outbox table's column default (`next_attempt_at TIMESTAMPTZ NOT NULL
+DEFAULT now()`) — real Postgres wall-clock time at insertion — which was
+only ever correct by coincidence for a caller (worker.py, every replay
+script, every test) operating on an injected/simulated clock. Once real
+time passed the fixed 2026-09 dates, a row's DB-default next_attempt_at
+could land *after* the simulated `now` the caller was about to query
+with — permanently stuck, no error. This would have started silently
+breaking `make replay-fixed`/`make bench` from today onward with nothing
+in the scripts themselves to catch it. Fixed: insert_outbox now takes
+`next_attempt_at` explicitly from the caller instead of the DB default.
+Confirmed replay-fixed is still byte-identical (469/500, 467,276.74) and
+all 201 tests are green again.
 
 Not done yet: README per docs §S.1's ten-question structure (still says
 "Phase 1 in progress"), Mermaid architecture diagram, deploy (docs: "one
