@@ -247,6 +247,10 @@ Live operational metrics in Prometheus text format at `GET /metrics`: cases by s
 consumed, policy denials by reason code, decline-cause normalization source counts (dictionary vs.
 fuzzy vs. LLM vs. abstained), notice generation source counts, and validator repair count.
 
+Screenshots of all three dashboard screens (case detail, benchmark, audit — captured against a
+freshly-seeded demo, zero console errors): [`docs/screenshots/`](docs/screenshots/). Timed
+5-minute submission-video script: [`docs/DEMO_SCRIPT.md`](docs/DEMO_SCRIPT.md).
+
 ## 10. Setup / testing / limitations / future work
 
 ### Setup (three commands, no cloud account)
