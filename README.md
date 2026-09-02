@@ -214,12 +214,19 @@ fuzzy vs. LLM vs. abstained), notice generation source counts, and validator rep
 ```bash
 make dev              # create venv, install deps
 make up                # start Postgres, run migrations
-.venv/bin/python -m uvicorn app.api.app:app --reload   # run from the repo root
+make demo-seed         # seed a curated, repeatable demo scenario (see below)
 ```
 
-Then visit `http://localhost:8000/dashboard/index.html`. To see real data: `make seed-payers`
-then `make replay-fixed` (or `make replay-compare` for all three live policies), which populate
-the database the dashboard reads from.
+Then in a separate terminal: `.venv/bin/python -m uvicorn app.api.app:app --reload` (run from the
+repo root) and visit `http://localhost:8000/dashboard/index.html`.
+
+`make demo-seed` wipes and reseeds three hand-picked cases, one per docs §I.5 workflow —
+`CYC-DEMO-RECOVERY` (W1, automatic recovery), `CYC-DEMO-HOPELESS` (W2, stop-and-escalate —
+see `scripts/demo_seed.py`'s docstring for an honesty note on how this one is constructed),
+`CYC-DEMO-BLOCKED` (W3, the compliance-blocked "demo failure") — plus 40 real `dev`-split payers
+through the same live ingestion path, so the dashboard doesn't look suspiciously empty. For the
+full aggregate-statistics replays instead: `make seed-payers` then `make replay-fixed` (P0 only) or
+`make replay-compare` (all three live policies, 300 payers each).
 
 ```bash
 make check             # lint + strict mypy + full test suite
@@ -256,7 +263,15 @@ independent code paths.
    to it, it is the first thing to validate against real data — and Section 8's locked benchmark
    result is a direct, empirical demonstration of why that validation matters: the planner's
    hazard-avoidance trade-off could not be credited in a benchmark with no stochastic revocation
-   model to observe its benefit.
+   model to observe its benefit. Checked directly while building the demo seed script
+   (`scripts/demo_seed.py`): with `E_MANUAL=150` and these hazard constants, the stopping rule's
+   real economic threshold only fires at essentially *zero* probability — even p=0.001 makes
+   continuing worth more than stopping for any realistic mandate amount, since E_manual is a fixed
+   cost and the expected value of continuing scales with the amount. `STOP_AND_ESCALATE` is a real,
+   tested, first-class DP action (`domain/planner.py`), but under the current default cost
+   parameterization it is reachable in practice only near the p≈0 edge case, not across a
+   meaningfully wide "this probably won't work" band — another concrete reason these constants need
+   real data before they're trustworthy.
 4. **The trained success model does not currently discriminate on decline cause.**
    `app/policies/live.py` correctly threads each case's real, normalized cause into the scorer
    (`GET /events` → `/cases/{id}` will show it), but `app/ml/corpus.py`'s synthetic label generator
