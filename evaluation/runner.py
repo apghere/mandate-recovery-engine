@@ -180,8 +180,11 @@ def _payer_context(p: Payer) -> PayerContext:
 
 def _greedy_compute_plan(
     artifact: ModelArtifact, payer: Payer
-) -> Callable[[date], PlanChoice]:
-    def compute_plan(due_date: date) -> PlanChoice:
+) -> Callable[[date, Cause], PlanChoice]:
+    def compute_plan(due_date: date, _cause: Cause) -> PlanChoice:
+        # _cause ignored on purpose -- see module docstring: SCORING_CAUSE
+        # is held fixed for a fair aggregate timing comparison, unlike
+        # app/policies/live.py's cause-aware production wiring.
         probs = score_slots(
             artifact, payer=_payer_context(payer), start_date=due_date, n_slots=N_SLOTS,
             attempt_sequence_no=2, cause=SCORING_CAUSE, consecutive_prior_failures=0,
@@ -203,8 +206,9 @@ def _greedy_compute_plan(
 
 def _mre_compute_plan(
     artifact: ModelArtifact, payer: Payer, *, e_manual: float
-) -> Callable[[date], PlanChoice]:
-    def compute_plan(due_date: date) -> PlanChoice:
+) -> Callable[[date, Cause], PlanChoice]:
+    def compute_plan(due_date: date, _cause: Cause) -> PlanChoice:
+        # _cause ignored on purpose -- see _greedy_compute_plan above.
         probs = score_slots(
             artifact, payer=_payer_context(payer), start_date=due_date, n_slots=N_SLOTS,
             attempt_sequence_no=2, cause=SCORING_CAUSE, consecutive_prior_failures=0,
@@ -225,14 +229,18 @@ def _mre_compute_plan(
     return compute_plan
 
 
-def _oracle_compute_plan(payer: Payer, *, e_manual: float) -> Callable[[date], PlanChoice]:
+def _oracle_compute_plan(
+    payer: Payer, *, e_manual: float
+) -> Callable[[date, Cause], PlanChoice]:
     """The perfect-information ceiling: the identical DP solver MRE uses,
     fed simulator/decline.py's true success_probability at every slot
     instead of the trained model's calibrated estimate. Not a policy the
     real system could run (it needs ground truth); a bound on how much
     headroom MRE's model-based estimate leaves on the table."""
 
-    def compute_plan(due_date: date) -> PlanChoice:
+    def compute_plan(due_date: date, _cause: Cause) -> PlanChoice:
+        # _cause ignored -- the oracle already has strictly more ground
+        # truth than the real cause could add (see docstring above).
         probs = tuple(
             success_probability(
                 payer.issuer_code,

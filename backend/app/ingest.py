@@ -22,14 +22,23 @@ engages once that first attempt's outcome is known:
     budget (seq 2-4).
 
 Policy selection: `ingest_debit_failed` takes a `compute_plan` callback
-(cycle due_date -> PlanChoice), defaulting to the P0 fixed baseline. This
-keeps ingest.py itself agnostic about *which* policy produced a schedule,
-or how — app/policies/mre.py's and app/policies/greedy.py's callers build
-a closure with payer/model context already bound in (see
-scripts/replay_mre.py) rather than this module needing to know anything
-about payers or trained models. A PlanChoice with `immediate_stop=True`
-(the DP deciding, at the root, that no attempt is worth making — docs
-§W2) routes straight to ESCALATING -> AWAITING_MANUAL instead of
+((cycle due_date, normalized cause) -> PlanChoice), defaulting to the P0
+fixed baseline. Taking the cause as an explicit argument (not just the
+due_date) is deliberate: it's the *actually normalized* cause for *this*
+case, computed a few lines above in this same function, and it's what
+lets a cause like MANDATE_REVOKED genuinely drive the planner's own
+near-zero probability estimate for this specific case — not a
+stand-in a caller decided on in advance. This keeps ingest.py itself
+agnostic about *which* policy produced a schedule, or how —
+app/policies/live.py's select_compute_plan is what api/app.py's real
+`/events` endpoint actually uses (payer/model context bound in per-case);
+scripts/replay_compare.py and evaluation/runner.py build their own
+closures for benchmark purposes and deliberately hold cause fixed instead
+(see their own docstrings for why) rather than this module needing to
+know anything about payers or trained models. A PlanChoice with
+`immediate_stop=True` (the DP deciding, at the root, that no attempt is
+worth making — docs §W2) routes straight to ESCALATING -> AWAITING_MANUAL
+instead of
 SCHEDULED, with zero further attempts consumed.
 
 `mandate.revoked` / `notification.opted_out` (Phase 7, docs §N Day 4):
@@ -69,7 +78,7 @@ from app import repo
 from app.ai.normalizer import normalize
 from app.db import Conn
 from app.domain.fsm import Event, legal_events, transition
-from app.domain.types import CaseState
+from app.domain.types import CaseState, Cause
 from app.policies.fixed import POLICY_VERSION as FIXED_POLICY_VERSION
 from app.policies.fixed import ScheduledStep, compute_fixed_schedule
 from data.generator import load_taxonomy
@@ -211,7 +220,7 @@ class PlanChoice:
     solver_ms: float = 0.0
 
 
-def _default_fixed_plan(due_date: date) -> PlanChoice:
+def _default_fixed_plan(due_date: date, _cause: Cause) -> PlanChoice:
     return PlanChoice(
         policy_version=FIXED_POLICY_VERSION,
         steps=compute_fixed_schedule(due_date),
@@ -223,7 +232,7 @@ def ingest_debit_failed(
     conn: Conn,
     event: DebitOutcomeEvent,
     *,
-    compute_plan: Callable[[date], PlanChoice] = _default_fixed_plan,
+    compute_plan: Callable[[date, Cause], PlanChoice] = _default_fixed_plan,
 ) -> IngestResult:
     """First attempt (seq 1) failed — the chosen policy engages for the
     remaining budget. See module docstring for `compute_plan`."""
@@ -290,7 +299,9 @@ def ingest_debit_failed(
                 },
             )
 
-            plan_choice = compute_plan(cycle["due_date"])
+            plan_choice = compute_plan(
+                cycle["due_date"], normalization.cause if normalization else Cause.UNKNOWN
+            )
 
             state = CaseState.DUE
             state = transition(state, Event.CYCLE_FAILED)

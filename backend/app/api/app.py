@@ -34,6 +34,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, ValidationError
 
+from app import repo
 from app.api.dashboard import router as dashboard_router
 from app.config import get_settings
 from app.db import get_connection
@@ -49,6 +50,7 @@ from app.ingest import (
     ingest_mandate_revoked,
     ingest_notification_opted_out,
 )
+from app.policies.live import select_compute_plan
 
 app = FastAPI(title="Mandate Recovery Engine — ingestion API")
 app.include_router(dashboard_router)
@@ -168,4 +170,13 @@ def _dispatch(envelope: EventEnvelope) -> IngestResult:
         )
         if envelope.type == "debit.succeeded":
             return ingest_debit_succeeded(conn, outcome_event)
-        return ingest_debit_failed(conn, outcome_event)
+        # The live product policy (docs §K.4): cause-aware MRE scoring
+        # using this mandate's real payer context, falling back to the P0
+        # fixed baseline when there's no payer row yet — see
+        # app/policies/live.py's module docstring for why this is a
+        # distinct path from the benchmark tooling's own closures.
+        mandate = repo.get_mandate(conn, envelope.mandate_id)
+        compute_plan = select_compute_plan(conn, mandate) if mandate is not None else None
+        if compute_plan is None:
+            return ingest_debit_failed(conn, outcome_event)
+        return ingest_debit_failed(conn, outcome_event, compute_plan=compute_plan)

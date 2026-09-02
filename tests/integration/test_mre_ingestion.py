@@ -9,6 +9,7 @@ from datetime import UTC, date, datetime
 from app import repo
 from app.db import Conn
 from app.domain.planner import PlannerConfig, PlanningInputs
+from app.domain.types import Cause
 from app.ingest import (
     CycleDueEvent,
     DebitOutcomeEvent,
@@ -45,7 +46,7 @@ def _seed_cycle(conn: Conn, cycle_id: str, amount: float = 500.0) -> None:
 def _mre_compute_plan(p_success: tuple[float, ...]) -> object:
     config = PlannerConfig(n_slots=len(p_success), max_attempts=4)
 
-    def compute_plan(due_date: date) -> PlanChoice:
+    def compute_plan(due_date: date, _cause: Cause) -> PlanChoice:
         inputs = PlanningInputs(
             amount=500.0, p_success=p_success, e_manual=200.0, e_manual_late=50.0
         )

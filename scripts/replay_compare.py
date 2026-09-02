@@ -122,8 +122,13 @@ def _payer_context(p: Payer) -> PayerContext:
     )
 
 
-def _greedy_compute_plan(artifact: ModelArtifact, payer: Payer) -> Callable[[date], PlanChoice]:
-    def compute_plan(due_date: date) -> PlanChoice:
+def _greedy_compute_plan(
+    artifact: ModelArtifact, payer: Payer
+) -> Callable[[date, Cause], PlanChoice]:
+    def compute_plan(due_date: date, _cause: Cause) -> PlanChoice:
+        # _cause ignored on purpose -- see module docstring: SCORING_CAUSE
+        # is held fixed for a fair aggregate timing comparison across
+        # policies, independently of the simulator's real decline string.
         probs = score_slots(
             artifact, payer=_payer_context(payer), start_date=due_date, n_slots=N_SLOTS,
             attempt_sequence_no=2, cause=SCORING_CAUSE, consecutive_prior_failures=0,
@@ -143,8 +148,11 @@ def _greedy_compute_plan(artifact: ModelArtifact, payer: Payer) -> Callable[[dat
     return compute_plan
 
 
-def _mre_compute_plan(artifact: ModelArtifact, payer: Payer) -> Callable[[date], PlanChoice]:
-    def compute_plan(due_date: date) -> PlanChoice:
+def _mre_compute_plan(
+    artifact: ModelArtifact, payer: Payer
+) -> Callable[[date, Cause], PlanChoice]:
+    def compute_plan(due_date: date, _cause: Cause) -> PlanChoice:
+        # _cause ignored on purpose -- see _greedy_compute_plan above.
         probs = score_slots(
             artifact, payer=_payer_context(payer), start_date=due_date, n_slots=N_SLOTS,
             attempt_sequence_no=2, cause=SCORING_CAUSE, consecutive_prior_failures=0,
