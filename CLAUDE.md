@@ -469,9 +469,51 @@ script for a repeatable demo, docs/ENGINEERING_LOG.md, the Day 7 red-team
 exercises from docs §L.3, and actually rehearsing the demo end-to-end in
 a browser.
 
-Next: continue Phase 9 — README first (it's the cheapest, highest-leverage
-remaining item and forces writing the honest Limitations section this
-session already has all the material for), then seed/reset script + a
-real browser check of the dashboard, then the Mermaid diagram, then decide
-on deploy given the explicit "docker compose up is worth more than a
-fragile cloud deploy" guidance.
+README written per docs §S.1's ten-question structure (real Mermaid
+diagram, the honest Phase 8 evaluation section, three named limitations)
+— committed, setup instructions verified by actually starting the server
+with the exact documented command rather than trusting what should work
+(caught a real `--app-dir` import-path bug doing this).
+
+Found and fixed a second real architectural gap while planning a demo
+scenario for docs §W2: the live `/events` HTTP endpoint has, since Phase
+5, ALWAYS used the P0 fixed baseline — MRE/greedy were only ever
+reachable through replay/benchmark scripts, never through the product's
+own API. `compute_plan`'s signature widened to accept the cause
+ingest_debit_failed just normalized; new app/policies/live.py builds the
+real, cause-aware, payer-aware compute_plan for the live path (lazy
+cached artifact, graceful fixed-fallback with no payer row); api/app.py's
+`_dispatch` now uses it. 2 new tests prove it over real HTTP. 203 tests
+green.
+
+While verifying this, found and honestly flagged (not fixed, not hidden):
+the trained success model does NOT currently discriminate on cause at
+all — score_slots(cause=MANDATE_REVOKED) vs.
+score_slots(cause=INSUFFICIENT_FUNDS) on an identical payer/slot grid
+produce nearly identical probabilities (0.830 vs 0.824 mean). Root cause:
+app/ml/corpus.py's synthetic label generator draws `cause` independently
+of the simulated outcome, so the GBM never had a real cause->outcome
+relationship to learn. The live wiring above is structurally correct (the
+real cause now reaches the scorer) but not yet behaviourally load-bearing
+for automatic cause-driven stopping. Deliberately not fixed now: doing so
+means changing the training corpus's causal structure, which
+evaluation/runner.py and app/policies/live.py both retrain from at every
+invocation — changing it days before the deadline would silently
+invalidate the already-locked, already-committed Phase 8 sealed-test-
+split benchmark's reproducibility guarantee. This is now a fourth named
+limitation, alongside the other three in README.md.
+
+Demo-scenario implication: the W2 (stop-and-escalate) demo case should
+be built around a genuinely low-probability *timing/balance* situation
+(amount large relative to mean_balance every reachable day — this
+mechanism is real and verified, docs/SIGNAL_LEGITIMACY.md /
+scripts/demo_predictability.py), not a MANDATE_REVOKED cause — the latter
+would not actually produce a low score via the live path today, and a
+demo built on it would be quietly showing something that doesn't work
+yet.
+
+Next: seed/reset script for a repeatable demo (built around the
+timing/balance-driven W2 scenario, not the cause-driven one), then a real
+browser check of the dashboard, then the Mermaid diagram export, then
+decide on deploy given the explicit "docker compose up is worth more than
+a fragile cloud deploy" guidance.

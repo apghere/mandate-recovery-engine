@@ -257,6 +257,19 @@ independent code paths.
    result is a direct, empirical demonstration of why that validation matters: the planner's
    hazard-avoidance trade-off could not be credited in a benchmark with no stochastic revocation
    model to observe its benefit.
+4. **The trained success model does not currently discriminate on decline cause.**
+   `app/policies/live.py` correctly threads each case's real, normalized cause into the scorer
+   (`GET /events` → `/cases/{id}` will show it), but `app/ml/corpus.py`'s synthetic label generator
+   draws `cause` independently of the simulated outcome, so the model never had a real
+   cause→outcome relationship to learn — `score_slots(cause=MANDATE_REVOKED)` and
+   `score_slots(cause=INSUFFICIENT_FUNDS)` currently produce nearly identical probabilities on an
+   otherwise-identical payer/slot grid (checked directly: 0.830 vs. 0.824 mean). The
+   timing/balance signal is real and does drive genuine differentiation (see
+   `scripts/demo_predictability.py`); the cause signal, mechanically wired end to end, is not yet
+   load-bearing. Fixing it means changing the training corpus's causal structure — deliberately not
+   done days before the deadline, since both `evaluation/runner.py` and `app/policies/live.py`
+   retrain from that corpus on every invocation, and changing it now would silently break Section
+   8's locked benchmark result's reproducibility guarantee.
 
 ### Out of scope, stated plainly
 
@@ -272,7 +285,9 @@ evaluation metric that can actually credit avoided annoyance — the correct way
 MRE's value proposition this benchmark's current scope structurally cannot measure (see Section 8).
 The mandate-continuation term. An AFA consent flow once Razorpay UPI Autopay test-mode access
 unblocks. Per-merchant kill-switch and contact-cap configuration promoted from constants to real
-admin-editable state.
+admin-editable state. Making the training corpus's `cause` label causally connected to its
+simulated outcome (Limitation 4), then re-running the full locked benchmark once, deliberately,
+as a new evaluation — not a silent drift of the existing one.
 
 ---
 
