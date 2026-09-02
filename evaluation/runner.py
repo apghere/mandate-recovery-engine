@@ -75,6 +75,7 @@ from app.ingest import (
 from app.ml.calibrate import fit_isotonic
 from app.ml.corpus import corpus_to_features_and_labels, generate_corpus
 from app.ml.inference import PayerContext, score_slots, slot_datetime
+from app.ml.lookup_baseline import LookupTable, fit_lookup_table, score_slots_lookup
 from app.ml.registry import ModelArtifact
 from app.ml.train import fit_success_model
 from app.policies.greedy import POLICY_VERSION as GREEDY_VERSION
@@ -118,8 +119,9 @@ def _due_at_for(payer: Payer) -> datetime:
 E_MANUAL_DEFAULT = 150.0
 E_MANUAL_LATE_RATIO = 30.0 / 150.0  # keeps the fixed/greedy/mre ratio used elsewhere
 SCORING_CAUSE = Cause.INSUFFICIENT_FUNDS  # see replay_compare.py's docstring — same reasoning
-POLICIES = ("fixed", "greedy", "mre", "oracle")
+POLICIES = ("fixed", "greedy", "lookup", "mre", "oracle")
 ORACLE_POLICY_VERSION = "ORACLE-dp-v1"
+LOOKUP_POLICY_VERSION = "P0b-lookup-v1"
 
 _RESET_TABLES = (
     "audit_ledger",
@@ -165,6 +167,15 @@ def _train_artifact() -> ModelArtifact:
     return ModelArtifact(model=model, encoder=encoder, isotonic=isotonic, version="bench")
 
 
+def _train_lookup_table() -> LookupTable:
+    """P0b (docs §T red-team item 2): fit from the identical `train`-split
+    corpus the GBM trains on — same split discipline, same input data —
+    so the comparison to `mre`/`greedy` isolates what the calibrated model
+    is worth over a plain (cause, day-of-month) average, not a difference
+    in what data each baseline got to see."""
+    return fit_lookup_table(generate_corpus("train"))
+
+
 def _payer_context(p: Payer) -> PayerContext:
     return PayerContext(
         payer_id=p.payer_id,
@@ -199,6 +210,37 @@ def _greedy_compute_plan(
         )
         return PlanChoice(
             policy_version=GREEDY_VERSION, steps=plan.steps, immediate_stop=plan.immediate_stop
+        )
+
+    return compute_plan
+
+
+def _lookup_compute_plan(
+    table: LookupTable, payer: Payer
+) -> Callable[[date, Cause], PlanChoice]:
+    """P0b — see app/ml/lookup_baseline.py's module docstring. Identical
+    naive-greedy scheduling logic to `greedy` (compute_greedy_schedule),
+    fed a plain (cause, day-of-month) table lookup instead of the trained,
+    calibrated model. The only variable this isolates relative to
+    `greedy` is the source of P(success); the DP-vs-greedy comparison
+    (mre vs greedy) is a separate axis."""
+
+    def compute_plan(due_date: date, _cause: Cause) -> PlanChoice:
+        # _cause ignored on purpose -- see _greedy_compute_plan above.
+        probs = score_slots_lookup(
+            table, start_date=due_date, n_slots=N_SLOTS, cause=SCORING_CAUSE
+        )
+        config = PlannerConfig(n_slots=N_SLOTS, max_attempts=4)
+        inputs = PlanningInputs(
+            amount=payer.mandate_amount, p_success=probs,
+            e_manual=E_MANUAL_DEFAULT, e_manual_late=E_MANUAL_DEFAULT * E_MANUAL_LATE_RATIO,
+        )
+        plan = compute_greedy_schedule(
+            start_date=due_date, attempts_remaining=3, config=config, inputs=inputs
+        )
+        return PlanChoice(
+            policy_version=LOOKUP_POLICY_VERSION, steps=plan.steps,
+            immediate_stop=plan.immediate_stop,
         )
 
     return compute_plan
@@ -282,6 +324,7 @@ def _seed_and_run_attempt_one(
     conn: Conn,
     simulator: SimulatorClient,
     artifact: ModelArtifact,
+    lookup_table: LookupTable,
     policy: str,
     payer: Payer,
     cycle_id: str,
@@ -324,6 +367,10 @@ def _seed_and_run_attempt_one(
         ingest_debit_failed(conn, outcome_event)
     elif policy == "greedy":
         ingest_debit_failed(conn, outcome_event, compute_plan=_greedy_compute_plan(artifact, payer))
+    elif policy == "lookup":
+        ingest_debit_failed(
+            conn, outcome_event, compute_plan=_lookup_compute_plan(lookup_table, payer)
+        )
     elif policy == "mre":
         ingest_debit_failed(
             conn, outcome_event, compute_plan=_mre_compute_plan(artifact, payer, e_manual=e_manual)
@@ -340,6 +387,7 @@ def run_paired_batch(
     conn: Conn,
     simulator: SimulatorClient,
     artifact: ModelArtifact,
+    lookup_table: LookupTable,
     payers: list[Payer],
     policies: Sequence[str] = POLICIES,
     *,
@@ -357,7 +405,8 @@ def run_paired_batch(
             mandate_id = f"MANDATE-{policy}-{payer.payer_id}"
             cycle_ids_by_policy[policy].append((cycle_id, payer.payer_id))
             _seed_and_run_attempt_one(
-                conn, simulator, artifact, policy, payer, cycle_id, mandate_id, e_manual=e_manual
+                conn, simulator, artifact, lookup_table, policy, payer, cycle_id, mandate_id,
+                e_manual=e_manual,
             )
 
     while True:
@@ -568,6 +617,7 @@ def run_sensitivity_sweep(
     conn: Conn,
     simulator: SimulatorClient,
     artifact: ModelArtifact,
+    lookup_table: LookupTable,
     payers: list[Payer],
     *,
     e_manual_values: Sequence[float] = (100.0, 150.0, 250.0),
@@ -581,7 +631,7 @@ def run_sensitivity_sweep(
         e_manual_late = e_manual * E_MANUAL_LATE_RATIO
         print(f"\n--- E_MANUAL = {e_manual:.2f} (E_MANUAL_LATE = {e_manual_late:.2f}) ---")
         results = run_paired_batch(
-            conn, simulator, artifact, payers, POLICIES, e_manual=e_manual
+            conn, simulator, artifact, lookup_table, payers, POLICIES, e_manual=e_manual
         )
         print_summary_table(results, POLICIES)
         diffs = paired_diffs(results, "mre", "fixed", _amount_metric)
@@ -595,9 +645,20 @@ def main() -> None:
     parser.add_argument("--n", type=int, default=N_MANDATES_DEFAULT)
     parser.add_argument("--n-boot", type=int, default=5000)
     parser.add_argument("--sensitivity", action="store_true")
-    parser.add_argument("--out-dir", type=Path, default=Path("reports"))
+    parser.add_argument(
+        "--out-dir",
+        type=Path,
+        default=None,
+        help="defaults to reports/ for --split test (the one locked submission "
+        "artifact) and reports/dev/ for --split dev, so a routine dev-split run "
+        "can never silently overwrite the locked test-split report (docs "
+        "ENGINEERING_LOG.md's P0b entry: this exact thing happened once, caught "
+        "only by git status before it was committed)",
+    )
     parser.add_argument("--no-report", action="store_true", help="skip writing reports/")
     args = parser.parse_args()
+    if args.out_dir is None:
+        args.out_dir = Path("reports") if args.split == "test" else Path("reports/dev")
 
     if args.split == "test":
         print(
@@ -609,6 +670,8 @@ def main() -> None:
     print("training the success model (train + calibration splits, never "
           f"{args.split})...")
     artifact = _train_artifact()
+    print("fitting the P0b lookup-table baseline (train split, docs §T item 2)...")
+    lookup_table = _train_lookup_table()
 
     print("starting in-process simulator...")
     base_url = _start_simulator()
@@ -618,7 +681,7 @@ def main() -> None:
     print(f"seeding {len(payers)} mandates x {len(POLICIES)} policies ({args.split} split)...")
 
     with get_connection() as conn:
-        results = run_paired_batch(conn, simulator, artifact, payers, POLICIES)
+        results = run_paired_batch(conn, simulator, artifact, lookup_table, payers, POLICIES)
 
         print()
         print(
@@ -634,7 +697,9 @@ def main() -> None:
             )
 
         if args.sensitivity:
-            run_sensitivity_sweep(conn, simulator, artifact, payers, n_boot=args.n_boot)
+            run_sensitivity_sweep(
+                conn, simulator, artifact, lookup_table, payers, n_boot=args.n_boot
+            )
 
 
 if __name__ == "__main__":

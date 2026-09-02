@@ -1,0 +1,130 @@
+{
+  "split": "dev",
+  "n_mandates": 500,
+  "n_boot": 5000,
+  "generated_at": "2026-09-02T13:43:44.477195+00:00",
+  "summary": [
+    {
+      "policy": "fixed",
+      "n": 500,
+      "recovered": 473,
+      "recovery_rate": 0.946,
+      "rupees_recovered": 493824.01,
+      "attempts_used": 670
+    },
+    {
+      "policy": "greedy",
+      "n": 500,
+      "recovered": 467,
+      "recovery_rate": 0.934,
+      "rupees_recovered": 491645.96,
+      "attempts_used": 672
+    },
+    {
+      "policy": "lookup",
+      "n": 500,
+      "recovered": 469,
+      "recovery_rate": 0.938,
+      "rupees_recovered": 493814.67,
+      "attempts_used": 672
+    },
+    {
+      "policy": "mre",
+      "n": 500,
+      "recovered": 476,
+      "recovery_rate": 0.952,
+      "rupees_recovered": 500562.7,
+      "attempts_used": 682
+    },
+    {
+      "policy": "oracle",
+      "n": 500,
+      "recovered": 476,
+      "recovery_rate": 0.952,
+      "rupees_recovered": 498514.74,
+      "attempts_used": 681
+    }
+  ],
+  "paired_comparisons": [
+    {
+      "a": "fixed",
+      "b": "greedy",
+      "mean_gap_rupees_per_payer": 4.3561,
+      "ci_lo": -8.6101385,
+      "ci_hi": 16.208486999999998,
+      "significant": false
+    },
+    {
+      "a": "fixed",
+      "b": "lookup",
+      "mean_gap_rupees_per_payer": 0.01867999999999938,
+      "ci_lo": -17.795725,
+      "ci_hi": 16.128235999999994,
+      "significant": false
+    },
+    {
+      "a": "fixed",
+      "b": "mre",
+      "mean_gap_rupees_per_payer": -13.47738,
+      "ci_lo": -31.9451405,
+      "ci_hi": 1.0250794999999966,
+      "significant": false
+    },
+    {
+      "a": "fixed",
+      "b": "oracle",
+      "mean_gap_rupees_per_payer": -9.381459999999999,
+      "ci_lo": -29.081726,
+      "ci_hi": 9.151150000000001,
+      "significant": false
+    },
+    {
+      "a": "greedy",
+      "b": "lookup",
+      "mean_gap_rupees_per_payer": -4.33742,
+      "ci_lo": -21.5219695,
+      "ci_hi": 11.549807999999974,
+      "significant": false
+    },
+    {
+      "a": "greedy",
+      "b": "mre",
+      "mean_gap_rupees_per_payer": -17.833479999999998,
+      "ci_lo": -35.4719985,
+      "ci_hi": -3.548753000000001,
+      "significant": true
+    },
+    {
+      "a": "greedy",
+      "b": "oracle",
+      "mean_gap_rupees_per_payer": -13.73756,
+      "ci_lo": -32.874805499999994,
+      "ci_hi": 5.008034999999988,
+      "significant": false
+    },
+    {
+      "a": "lookup",
+      "b": "mre",
+      "mean_gap_rupees_per_payer": -13.49606,
+      "ci_lo": -28.316523999999998,
+      "ci_hi": -1.1405045000000178,
+      "significant": true
+    },
+    {
+      "a": "lookup",
+      "b": "oracle",
+      "mean_gap_rupees_per_payer": -9.400139999999999,
+      "ci_lo": -25.705083499999997,
+      "ci_hi": 7.646840499999993,
+      "significant": false
+    },
+    {
+      "a": "mre",
+      "b": "oracle",
+      "mean_gap_rupees_per_payer": 4.0959200000000004,
+      "ci_lo": -5.698852999999999,
+      "ci_hi": 17.31156,
+      "significant": false
+    }
+  ]
+}

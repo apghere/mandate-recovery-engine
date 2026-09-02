@@ -314,6 +314,37 @@ up from 203), lint, and mypy all green; `make replay-fixed` still
 byte-identical (469/500, ₹467,276.74). Full exercise log with the other
 five (which found nothing) is in `docs/SECURITY_REVIEW.md`.
 
+## Day 7 — the P0b baseline (docs §T red-team item 2)
+
+**Near-miss: a dev-split benchmark run almost silently overwrote the
+locked test-split report.** Building P0b (a deterministic lookup-table
+baseline, added to pre-empt "deterministic code could replace the ML
+model" per docs §T item 2), the first run of `evaluation.runner` with the
+new 5-policy `POLICIES` tuple used the default `--out-dir` (`reports/`).
+That directory already held the committed, one-time-locked test-split
+`BENCHMARK.md`/`benchmark.json` — this dev-split run overwrote both with
+different numbers before I'd noticed. `git status` caught it immediately,
+before anything was committed (both files showed modified); restored via
+`git checkout -- reports/BENCHMARK.md reports/benchmark.json`, then
+re-ran with an explicit `--out-dir reports/dev_p0b_baseline` so the
+locked artifact and the new dev-only comparison live in separate files.
+
+Named plainly rather than glossed over: the sealed test split's actual
+protection in this moment was a human/agent checking `git status` before
+committing, not anything enforced by the tool itself — and this wasn't a
+one-off setup mistake either: `make bench`/`make bench-sensitivity` (the
+documented, repeatable dev-benchmark commands) both invoke
+`evaluation.runner` with no `--out-dir`, so *every* routine `make bench`
+run after the locked test result was committed would have silently
+clobbered it the same way. Fixed properly, not just documented:
+`--out-dir` now defaults to `reports/` only for `--split test` and to
+`reports/dev/` for `--split dev` — a routine dev run can no longer share
+a path with the locked artifact by construction, regardless of which
+command invokes it. Re-ran the dev+sensitivity benchmark against the new
+default path to confirm: numbers byte-identical to the first run,
+`reports/BENCHMARK.md`/`benchmark.json` untouched (`git status` clean on
+both).
+
 ## Known bugs / gaps still open at the time of writing
 
 - `feature_hash` is hardcoded to `"n/a"` in `plans` table inserts —

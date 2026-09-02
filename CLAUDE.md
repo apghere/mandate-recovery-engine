@@ -633,3 +633,95 @@ by shipping it as a fifth baseline is called "the strongest possible
 response") -- not yet built, flagged to the user as a real scope decision
 given remaining time rather than assumed; the 5-minute submission video;
 screenshots; final README pass; the v1.0-submission tag.
+
+---
+
+User confirmed (2026-09-02): build P0b. Built and run for real, not left
+as a paper baseline.
+
+`backend/app/ml/lookup_baseline.py`: `fit_lookup_table` groups the exact
+same `train`-split labeled corpus `app/ml/train.py` fits the GBM on
+(`app/ml/corpus.py::generate_corpus("train")` -- same split discipline,
+same input data, so the comparison isolates the model, not a difference
+in what data each baseline saw) by `(cause, day_of_month)` and averages
+the observed success label per bucket, with a documented 3-level backoff
+(bucket -> cause -> global) for sparse combinations. `score_slots_lookup`
+matches `app/ml/inference.py::score_slots`'s exact output shape (a
+`tuple[float, ...]` over slots), so it plugs directly into the existing
+`compute_greedy_schedule` (`app/policies/greedy.py`) with zero changes to
+scheduling logic -- the only thing P0b swaps out relative to `greedy` is
+the source of P(success), which is exactly what §T item 2 asks about.
+7 new pure-function tests in tests/ml/test_lookup_baseline.py, including
+one against the real train corpus (not just synthetic fixtures).
+
+Wired into evaluation/runner.py as a 5th policy (`lookup`,
+`POLICIES = ("fixed", "greedy", "lookup", "mre", "oracle")`) --
+`_lookup_compute_plan` mirrors `_greedy_compute_plan` exactly, swapping
+`score_slots` for `score_slots_lookup`. `_train_lookup_table` threaded
+alongside `_train_artifact` through `run_paired_batch`/
+`run_sensitivity_sweep`/`main()`. 212 tests green (was 205), lint + mypy
+clean, `make replay-fixed` still byte-identical (469/500, Rs 467,276.74).
+
+**Near-miss caught before it did damage**: the first `make bench`-
+equivalent run after wiring this in used the default `--out-dir`
+(`reports/`), which silently overwrote the already-committed, LOCKED
+test-split `reports/BENCHMARK.md`/`benchmark.json` with a dev-split,
+5-policy report -- `git status` caught it immediately (both files showed
+modified) before anything was committed. Restored via `git checkout --
+reports/BENCHMARK.md reports/benchmark.json`. Worth naming plainly: the
+sealed test split's actual protection here was `git status` and a
+human/agent checking it before committing, not anything in the tool
+itself -- and this wasn't a one-off setup mistake: `make bench`/`make
+bench-sensitivity` both invoke evaluation.runner with no `--out-dir`
+either, so *every* routine `make bench` run after the locked result was
+committed would have clobbered it the same way. Fixed properly, not just
+documented: `--out-dir` now defaults to `reports/` only for `--split
+test` and to `reports/dev/` for `--split dev`, so a routine dev run can't
+share a path with the locked artifact by construction regardless of
+which command invokes it. Re-ran dev+sensitivity against the new default
+path to confirm byte-identical numbers and a clean `git status` on the
+locked files. Full writeup, including this near-miss, is in
+docs/ENGINEERING_LOG.md's own Day 7 P0b entry.
+
+**Result, dev split n=500** (docs §T item 2's own anticipated framing:
+"if the GBM beats it by little, say so and note that the planner is where
+the value lives" -- it beats it by a lot here, which is a stronger
+answer, not the fallback one):
+
+    policy    recovered  rate    rupees       attempts
+    fixed     473        94.6%   493,824.01   670
+    greedy    467        93.4%   491,645.96   672
+    lookup    469        93.8%   493,814.67   672
+    mre       476        95.2%   500,562.70   682
+    oracle    476        95.2%   498,514.74   681
+
+    lookup vs fixed:  +0.02 rupees/payer,  95% CI [-17.80, 16.13] -- not significant
+    lookup vs greedy: -4.34 rupees/payer,  95% CI [-21.52, 11.55] -- not significant
+    lookup vs mre:   -13.50 rupees/payer,  95% CI [-28.32, -1.14] -- significant
+    lookup vs oracle: -9.40 rupees/payer,  95% CI [-25.71,  7.65] -- not significant
+
+`lookup` is statistically indistinguishable from `fixed` and from
+`greedy` -- a plain (cause, day-of-month) table captures almost nothing
+beyond the blind fixed schedule on this problem, at this population
+scale. The real, significant edge sits between {mre, oracle} and
+everything simpler ({fixed, greedy, lookup} all cluster together).
+Confirmed robust across the E_MANUAL sensitivity sweep ({100, 150, 250}
+-- `lookup`'s own numbers don't move, since the table has no E_MANUAL
+dependency; `mre`'s edge over it holds at every value). Full report:
+reports/dev/BENCHMARK.md (`--out-dir`'s new split-namespaced default —
+see the near-miss note above).
+
+This does not change Section 8's locked test-split headline (`fixed`
+still wins there on gross rupees, for the hazard-pricing reasons already
+investigated) -- P0b was deliberately never run against the sealed split,
+consistent with "touched exactly once." What it does do is answer docs
+§T item 2 directly and with a stronger result than the plan itself
+anticipated needing: the model+planner combination beats a naive
+deterministic table by a real, significant margin on the one axis (dev
+timing optimisation) this benchmark can measure, even though the locked
+test-split result on gross rupees went the other way for `mre` vs
+`fixed` overall. Both facts are true and both are reported, not just the
+flattering one.
+
+README.md updated with the full P0b writeup in the Evaluation section,
+right after the existing honesty paragraph.
