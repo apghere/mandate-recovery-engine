@@ -285,7 +285,7 @@ make demo-predictability   # standalone proof the timing signal is real, no DB n
 ### Testing
 
 `make check` runs Ruff, mypy in strict mode, and the full pytest suite (`make test` alone for just
-tests) — 205 tests as of this writing, all deterministic, no network calls in CI (the LLM
+tests) — 212 tests as of this writing, all deterministic, no network calls in CI (the LLM
 components are tested with the real call path mocked at the SDK boundary, not skipped).
 `tests/integration/test_chaos.py` and `tests/simulator/` cover the failure matrix explicitly:
 duplicate/out-of-order webhook delivery, stale events after case closure, mid-plan mandate
