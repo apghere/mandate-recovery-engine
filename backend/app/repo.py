@@ -340,15 +340,33 @@ def update_attempt_outcome(
 
 
 def insert_outbox(
-    conn: Conn, *, destination: str, idempotency_key: str, payload: dict[str, Any]
+    conn: Conn,
+    *,
+    destination: str,
+    idempotency_key: str,
+    payload: dict[str, Any],
+    next_attempt_at: datetime,
 ) -> int:
+    # next_attempt_at is set explicitly here, not left to the column's own
+    # `DEFAULT now()` (migrations/0001_core.sql) -- that default is real
+    # Postgres wall-clock time, which is only ever correct by coincidence
+    # for a caller operating on an injected/simulated clock (every replay
+    # script, every integration test, and app.workflows.worker itself,
+    # which always receives `now` as a parameter rather than reading the
+    # system clock directly). Real-world time catching up to this
+    # project's fixed 2026-09 demo dates is exactly what exposed this: an
+    # outbox row inserted with the *real* now() while the caller's own
+    # simulated `now` was still earlier became permanently unreachable by
+    # fetch_pending_outbox's `next_attempt_at <= now` filter. Passing the
+    # caller's own `now` here instead makes the row due immediately in
+    # whatever clock the caller is actually operating on.
     row = conn.execute(
         """
-        INSERT INTO outbox (destination, idempotency_key, payload)
-        VALUES (%s, %s, %s)
+        INSERT INTO outbox (destination, idempotency_key, payload, next_attempt_at)
+        VALUES (%s, %s, %s, %s)
         RETURNING id
         """,
-        (destination, idempotency_key, Json(payload)),
+        (destination, idempotency_key, Json(payload), next_attempt_at),
     ).fetchone()
     assert row is not None
     outbox_id: int = row["id"]

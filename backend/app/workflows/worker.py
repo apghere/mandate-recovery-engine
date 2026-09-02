@@ -307,7 +307,11 @@ def _process_attempt_step(
         "credit_day": payer["credit_day"] if payer else None,
     }
     repo.insert_outbox(
-        conn, destination="simulator", idempotency_key=idempotency_key, payload=outbox_payload
+        conn,
+        destination="simulator",
+        idempotency_key=idempotency_key,
+        payload=outbox_payload,
+        next_attempt_at=now,
     )
     repo.mark_plan_step(conn, step["id"], status="dispatched")
     repo.insert_audit(
