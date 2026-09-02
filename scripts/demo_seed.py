@@ -25,7 +25,10 @@ test the stopping rule -- and says so, rather than silently presenting it
 as something the live scorer produced on its own.
 
 Usage: `make demo-seed` (wipes and reseeds -- do not point this at
-anything you care about).
+anything you care about). Run it immediately before a live demo/recording,
+not hours in advance: `make test`/`make check` truncate the same tables
+via the integration test fixtures and will leave whatever the last test
+happened to insert instead of these curated cases.
 """
 from __future__ import annotations
 
@@ -186,13 +189,13 @@ def main() -> None:
             split="dev",
         )
         outcome, succeeded = _seed_cycle_and_attempt1(
-            conn, simulator, "CYC-DEMO-RECOVERY", "MANDATE-DEMO-RECOVERY",
+            conn, simulator, "CYC-0-RECOVERY", "MANDATE-0-RECOVERY",
             "PAYER-DEMO-RECOVERY", 1500.0, "ISS01",
         )
         if succeeded:
             ingest_debit_succeeded(conn, outcome)
         else:
-            mandate = repo.get_mandate(conn, "MANDATE-DEMO-RECOVERY")
+            mandate = repo.get_mandate(conn, "MANDATE-0-RECOVERY")
             assert mandate is not None
             ingest_debit_failed(conn, outcome, compute_plan=select_compute_plan(conn, mandate))
 
@@ -201,21 +204,21 @@ def main() -> None:
         ingest_cycle_due(
             conn,
             CycleDueEvent(
-                external_id="ext:CYC-DEMO-HOPELESS:due", mandate_id="MANDATE-DEMO-HOPELESS",
-                cycle_id="CYC-DEMO-HOPELESS", merchant_id="MERCH-DEMO",
+                external_id="ext:CYC-0-HOPELESS:due", mandate_id="MANDATE-0-HOPELESS",
+                cycle_id="CYC-0-HOPELESS", merchant_id="MERCH-DEMO",
                 payer_id="PAYER-DEMO-HOPELESS", rail="upi_autopay", issuer_code="ISS01",
                 amount=8000.0, due_date=DUE_DATE, occurred_at=DUE_AT,
             ),
         )
         hopeless_result = simulator.execute(
-            cycle_id="CYC-DEMO-HOPELESS", sequence_no=1,
-            idempotency_key="CYC-DEMO-HOPELESS:seq1:demo", mandate_id="MANDATE-DEMO-HOPELESS",
+            cycle_id="CYC-0-HOPELESS", sequence_no=1,
+            idempotency_key="CYC-0-HOPELESS:seq1:demo", mandate_id="MANDATE-0-HOPELESS",
             payer_id="PAYER-DEMO-HOPELESS", amount=8000.0, scheduled_for=DUE_AT,
             issuer_code="ISS01",
         )
         hopeless_event = DebitOutcomeEvent(
-            external_id="ext:CYC-DEMO-HOPELESS:attempt1", mandate_id="MANDATE-DEMO-HOPELESS",
-            cycle_id="CYC-DEMO-HOPELESS", occurred_at=DUE_AT, amount=8000.0,
+            external_id="ext:CYC-0-HOPELESS:attempt1", mandate_id="MANDATE-0-HOPELESS",
+            cycle_id="CYC-0-HOPELESS", occurred_at=DUE_AT, amount=8000.0,
             raw_reason=hopeless_result.raw_reason,
         )
         if hopeless_result.outcome == "success":
@@ -236,18 +239,18 @@ def main() -> None:
             split="dev",
         )
         outcome3, succeeded3 = _seed_cycle_and_attempt1(
-            conn, simulator, "CYC-DEMO-BLOCKED", "MANDATE-DEMO-BLOCKED",
+            conn, simulator, "CYC-0-BLOCKED", "MANDATE-0-BLOCKED",
             "PAYER-DEMO-BLOCKED", 1200.0, "ISS01",
         )
         if not succeeded3:
-            mandate3 = repo.get_mandate(conn, "MANDATE-DEMO-BLOCKED")
+            mandate3 = repo.get_mandate(conn, "MANDATE-0-BLOCKED")
             assert mandate3 is not None
             ingest_debit_failed(conn, outcome3, compute_plan=select_compute_plan(conn, mandate3))
             first_notify = conn.execute(
                 "SELECT ps.* FROM plan_steps ps JOIN plans p ON p.id = ps.plan_id "
                 "WHERE p.cycle_id = %s AND ps.step_type = 'notify' "
                 "ORDER BY ps.scheduled_for LIMIT 1",
-                ("CYC-DEMO-BLOCKED",),
+                ("CYC-0-BLOCKED",),
             ).fetchone()
             if first_notify is not None:
                 repo.mark_plan_step(
@@ -302,9 +305,9 @@ def main() -> None:
 
     print()
     print(f"done -- {ticks} clock ticks. Curated cases:")
-    print("  CYC-DEMO-RECOVERY  (W1 automatic recovery)")
-    print("  CYC-DEMO-HOPELESS  (W2 stop-and-escalate -- curated, see module docstring)")
-    print("  CYC-DEMO-BLOCKED   (W3 compliance-blocked execution, the demo failure)")
+    print("  CYC-0-RECOVERY  (W1 automatic recovery)")
+    print("  CYC-0-HOPELESS  (W2 stop-and-escalate -- curated, see module docstring)")
+    print("  CYC-0-BLOCKED   (W3 compliance-blocked execution, the demo failure)")
     print(f"  + {len(payers)} background cases from the dev split")
     print()
     print("Start the API + dashboard: .venv/bin/python -m uvicorn app.api.app:app --reload")

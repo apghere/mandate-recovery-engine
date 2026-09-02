@@ -221,12 +221,16 @@ Then in a separate terminal: `.venv/bin/python -m uvicorn app.api.app:app --relo
 repo root) and visit `http://localhost:8000/dashboard/index.html`.
 
 `make demo-seed` wipes and reseeds three hand-picked cases, one per docs §I.5 workflow —
-`CYC-DEMO-RECOVERY` (W1, automatic recovery), `CYC-DEMO-HOPELESS` (W2, stop-and-escalate —
-see `scripts/demo_seed.py`'s docstring for an honesty note on how this one is constructed),
-`CYC-DEMO-BLOCKED` (W3, the compliance-blocked "demo failure") — plus 40 real `dev`-split payers
-through the same live ingestion path, so the dashboard doesn't look suspiciously empty. For the
-full aggregate-statistics replays instead: `make seed-payers` then `make replay-fixed` (P0 only) or
-`make replay-compare` (all three live policies, 300 payers each).
+`CYC-0-RECOVERY` (W1, automatic recovery), `CYC-0-HOPELESS` (W2, stop-and-escalate — see
+`scripts/demo_seed.py`'s docstring for an honesty note on how this one is constructed),
+`CYC-0-BLOCKED` (W3, the compliance-blocked "demo failure", sorted to the top of the case list) —
+plus 40 real `dev`-split payers through the same live ingestion path, so the dashboard doesn't look
+suspiciously empty. Run it right before a live demo/recording, not hours in advance: `make test`
+also truncates these tables via the integration test fixtures. All three dashboard screens were
+verified in an actual headless browser (Chrome via CDP, not just curl) — case-list click-through,
+the benchmark screen's dynamic honesty note, and a live kill-switch activate/deactivate round trip
+— zero console errors. For the full aggregate-statistics replays instead: `make seed-payers` then
+`make replay-fixed` (P0 only) or `make replay-compare` (all three live policies, 300 payers each).
 
 ```bash
 make check             # lint + strict mypy + full test suite
