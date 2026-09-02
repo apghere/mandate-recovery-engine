@@ -134,6 +134,118 @@ def test_debit_succeeded_before_cycle_due_is_a_clean_retryable_error(db: Conn) -
     assert row is None
 
 
+# --- Stale event after case closure (docs §L.3 red-team exercise) ----------
+#
+# Found by actually running this exercise, not by inspection: a delayed or
+# duplicated seq-1 outcome arriving after the cycle already reached a
+# terminal state used to fall straight into reserve_attempt_intent's
+# UNIQUE(cycle_id, sequence_no) constraint and surface as a raw, unhandled
+# psycopg.errors.UniqueViolation -- a 500, not a clean response. Fixed in
+# ingest_debit_succeeded/ingest_debit_failed: a terminal-state cycle now
+# quarantines the event (recorded, audited, never re-applied) instead of
+# crashing.
+
+
+def test_stale_debit_succeeded_after_cycle_already_recovered_is_quarantined(
+    db: Conn,
+) -> None:
+    cycle_id = "CYC-STALE1"
+    _seed_mandate_and_cycle(db, cycle_id, mandate_id="M-STALE1")
+    first = ingest_debit_succeeded(
+        db,
+        DebitOutcomeEvent(
+            external_id=f"ext:{cycle_id}:succeed1",
+            mandate_id="M-STALE1",
+            cycle_id=cycle_id,
+            occurred_at=DUE_AT,
+            amount=500.0,
+        ),
+    )
+    assert first.accepted and not first.duplicate
+    before = db.execute(
+        "SELECT state, attempts_used FROM cycles WHERE id = %s", (cycle_id,)
+    ).fetchone()
+    assert before["state"] == "RECOVERED" and before["attempts_used"] == 1
+
+    # A delayed duplicate of the same real-world debit outcome, redelivered
+    # under a different external_id (a realistic at-least-once rail
+    # behaviour, not just a literal retry of the identical payload).
+    late = ingest_debit_succeeded(
+        db,
+        DebitOutcomeEvent(
+            external_id=f"ext:{cycle_id}:succeed1:late-redelivery",
+            mandate_id="M-STALE1",
+            cycle_id=cycle_id,
+            occurred_at=DUE_AT + timedelta(hours=1),
+            amount=500.0,
+        ),
+    )
+    assert late.accepted and not late.duplicate  # a new event row, not a no-op
+
+    after = db.execute(
+        "SELECT state, attempts_used FROM cycles WHERE id = %s", (cycle_id,)
+    ).fetchone()
+    assert after["state"] == "RECOVERED" and after["attempts_used"] == 1  # untouched
+
+    n_attempts = db.execute(
+        "SELECT count(*) AS n FROM attempt_intents WHERE cycle_id = %s", (cycle_id,)
+    ).fetchone()["n"]
+    assert n_attempts == 1  # no second reservation attempted
+
+    audit = db.execute(
+        """SELECT detail FROM audit_ledger
+           WHERE cycle_id = %s AND action = 'stale_event_quarantined'""",
+        (cycle_id,),
+    ).fetchone()
+    assert audit is not None
+    assert audit["detail"]["event_type"] == "debit.succeeded"
+    assert audit["detail"]["cycle_state"] == "RECOVERED"
+
+
+def test_stale_debit_failed_after_cycle_already_abandoned_is_quarantined(
+    db: Conn,
+) -> None:
+    cycle_id = "CYC-STALE2"
+    _seed_mandate_and_cycle(db, cycle_id, mandate_id="M-STALE2")
+    db.execute(
+        "UPDATE cycles SET state = 'ABANDONED', closed_at = %s WHERE id = %s",
+        (DUE_AT, cycle_id),
+    )
+    db.commit()
+
+    late = ingest_debit_failed(
+        db,
+        DebitOutcomeEvent(
+            external_id=f"ext:{cycle_id}:late-fail",
+            mandate_id="M-STALE2",
+            cycle_id=cycle_id,
+            occurred_at=DUE_AT + timedelta(hours=1),
+            amount=500.0,
+            raw_reason="INSUFFICIENT FUNDS",
+        ),
+    )
+    assert late.accepted and not late.duplicate  # recorded, not rejected outright
+
+    after = db.execute(
+        "SELECT state, attempts_used FROM cycles WHERE id = %s", (cycle_id,)
+    ).fetchone()
+    assert after["state"] == "ABANDONED" and after["attempts_used"] == 0  # untouched
+
+    n_attempts = db.execute(
+        "SELECT count(*) AS n FROM attempt_intents WHERE cycle_id = %s", (cycle_id,)
+    ).fetchone()["n"]
+    assert n_attempts == 0
+
+    audit = db.execute(
+        """SELECT detail FROM audit_ledger
+           WHERE cycle_id = %s AND action = 'stale_event_quarantined'""",
+        (cycle_id,),
+    ).fetchone()
+    assert audit is not None
+    assert audit["detail"]["event_type"] == "debit.failed"
+    assert audit["detail"]["cycle_state"] == "ABANDONED"
+
+
 # --- Mid-plan mandate lifecycle events -------------------------------------
 
 

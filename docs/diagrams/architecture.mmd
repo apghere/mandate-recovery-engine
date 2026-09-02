@@ -1,0 +1,45 @@
+flowchart TB
+    subgraph client["Merchant / Payer"]
+        webhook[Webhook events]
+    end
+
+    subgraph api["FastAPI — api/app.py + api/dashboard.py"]
+        events["/events — idempotent ingestion, HMAC verified"]
+        cases["/cases, /metrics, /audit, /admin/kill-switches"]
+    end
+
+    subgraph domain["Domain core — pure, no I/O, no clock, no network"]
+        normalizer["ai/normalizer.py — cause resolution + abstention"]
+        scorer["ml/inference.py — calibrated P(success | slot)"]
+        planner["domain/planner.py — exact DP over (slot, budget, notice)"]
+        policy["domain/policy.py — authorize() → Allow | Deny(reason_code)"]
+        fsm["domain/fsm.py — recovery-case state machine"]
+    end
+
+    subgraph pg[("PostgreSQL 16")]
+        tables["events · mandates · cycles · attempt_intents · plans ·
+plan_steps · notifications · decisions · audit_ledger · outbox"]
+    end
+
+    subgraph worker["worker.py — single process"]
+        outbox["FOR UPDATE SKIP LOCKED
+due plan_steps + outbox drain"]
+    end
+
+    subgraph sim["simulator/ — separate service, own SQLite"]
+        rail["independently enforces the NPCI
+4-attempt cap + permitted windows"]
+    end
+
+    subgraph dash["frontend/*.html — Tailwind, no build step"]
+        d1[Case detail + counterfactual]
+        d2[Benchmark — evaluation/runner.py]
+        d3[Audit — chain validity + kill switch]
+    end
+
+    webhook --> events --> domain
+    domain --> pg
+    pg --> worker
+    worker <--> sim
+    dash --> api
+    api --> pg

@@ -241,12 +241,12 @@ make demo-predictability   # standalone proof the timing signal is real, no DB n
 ### Testing
 
 `make check` runs Ruff, mypy in strict mode, and the full pytest suite (`make test` alone for just
-tests) — 201 tests as of this writing, all deterministic, no network calls in CI (the LLM
+tests) — 205 tests as of this writing, all deterministic, no network calls in CI (the LLM
 components are tested with the real call path mocked at the SDK boundary, not skipped).
 `tests/integration/test_chaos.py` and `tests/simulator/` cover the failure matrix explicitly:
-duplicate/out-of-order webhook delivery, mid-plan mandate revocation, a simulated successfully-
-injected LLM, rail 5xx and ambiguous-timeout handling, and the four-attempt cap enforced from three
-independent code paths.
+duplicate/out-of-order webhook delivery, stale events after case closure, mid-plan mandate
+revocation, a simulated successfully-injected LLM, rail 5xx and ambiguous-timeout handling, and the
+four-attempt cap enforced from three independent code paths.
 
 ### Limitations — named before a reviewer finds them
 
@@ -311,4 +311,7 @@ as a new evaluation — not a silent drift of the existing one.
 ---
 
 *Full engineering history — every bug found, every architectural decision reconsidered, and why —
-is in `CLAUDE.md` (working log) and `docs/ADR/` (numbered decision records).*
+is in `CLAUDE.md` (working log), [`docs/ENGINEERING_LOG.md`](docs/ENGINEERING_LOG.md) (the "what
+broke" narrative, pulled out on its own), `docs/ADR/` (numbered decision records), and
+[`docs/SECURITY_REVIEW.md`](docs/SECURITY_REVIEW.md) (the docs §L.3 red-team exercises, run for
+real — one of six found a genuine bug, now fixed).*

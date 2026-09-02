@@ -548,3 +548,88 @@ setup + a recorded demo), docs/ENGINEERING_LOG.md (the "what broke and
 how I recovered" graded field -- CLAUDE.md itself is most of the raw
 material for this already), and the Day 7 red-team exercises from docs
 §L.3 (security review pass).
+
+---
+
+Continuing on the above list, re-grounded against the source PDF (§P.1's
+file tree, §L.3's exact six exercises, §S.1/§S.2) via `pdftotext` before
+starting, not from memory:
+
+`docs/diagrams/architecture.mmd` exported (docs P.1) — the same Mermaid
+source embedded in README.md's Architecture section, copied out as a
+standalone file with a short docs/diagrams/README.md explaining the
+relationship. No mermaid-cli/Node toolchain exists in this environment;
+judged not worth installing solely to produce a static PNG this close to
+the deadline (GitHub renders the fenced block natively either way) --
+documented as a deliberate call, not silently skipped.
+
+`docs/ENGINEERING_LOG.md` written -- the "what broke and how I
+recovered" narrative pulled out of CLAUDE.md's phase-by-phase notes into
+its own dedicated, chronological file, since it's a specifically graded
+field (docs S.2).
+
+Day 7 red-team exercises (docs §L.3) run for real, not reasoned about:
+all six against live Postgres + the real FastAPI app (TestClient, same
+technique test_api.py uses) + the real simulator where needed. Five
+confirmed the existing design holds (prompt injection bounded by the
+validator -- reused test_normalizer.py's existing 4-suffix red-team
+test; webhook replayed 50x -> exactly one event/cycle row; forged/missing
+HMAC signature both rejected 401, correct one accepted; attempt-cap
+override has literally no lever to pull -- the only admin write surface
+is the kill switch, which can only block, never grant, and the 5th
+attempt is independently rejected by the app's Postgres CHECK/UNIQUE
+constraints AND the simulator's own field bound; fabricated notice amount
+rejected by the whitelist check). One found a real bug:
+
+**Bug: a stale event delivered after case closure crashed with an
+unhandled DB exception**, not a clean quarantine. Running exercise 5 for
+real (close a cycle via debit.succeeded, then deliver a late debit.failed
+for the same cycle_id under a fresh external_id -- the realistic
+at-least-once-redelivery case) produced a raw
+`psycopg.errors.UniqueViolation` propagating straight through the HTTP
+layer as an unhandled 500. `ingest_debit_succeeded`/`ingest_debit_failed`
+had never checked whether a cycle was already terminal before reserving
+sequence 1 -- every *intended* call pattern only ever delivers a seq-1
+outcome once, on a freshly-DUE cycle, so this was invisible until
+red-teamed. The mandate-lifecycle ingestion functions
+(mandate.revoked/notification.opted_out) already had this guard via
+repo.non_terminal_cycles_for_mandate filtering before touching anything;
+the two debit-outcome functions didn't.
+
+Fixed: both now check the cycle's state against `TERMINAL_STATES` right
+after fetching it. A terminal cycle gets the event recorded (audit trail
+integrity -- it really did arrive) plus a `stale_event_quarantined` audit
+entry, but nothing downstream (no attempt reservation, no FSM
+transition, no plan mutation). Verified: exercise re-run cleanly (200,
+state untouched, quarantine entry present, no exception); 2 new
+regression tests in tests/integration/test_chaos.py; full suite (205,
+up from 203), lint, and mypy all green; `make replay-fixed` still
+byte-identical (469/500, Rs 467,276.74). Full exercise log for all six,
+findings and non-findings alike, is in docs/SECURITY_REVIEW.md; the bug
+and fix are also folded into docs/ENGINEERING_LOG.md's own Day 7 entry.
+
+README.md updated: links to both new docs files, test count corrected
+205 (was stale at 201).
+
+The deploy decision: not deploying to a separate cloud platform. Decided,
+not left open -- the source PDF's own N.7 scope-cut order lists "cloud
+deployment -> local-only with a recorded demo" as cut #2 (before UI
+polish, even), and Day 6's instructions read "a flawless documented
+docker compose up is worth more than a fragile cloud deploy; the video is
+the artifact that matters." The documented `make dev && make up && make
+demo-seed` + one uvicorn command path already reaches a working demo in
+three commands (verified for real, including in an actual browser, this
+session) -- a fragile Day-6/7 cloud deploy would trade a proven path for
+an unproven one under real time pressure, for a requirement the source
+material itself explicitly says is worth less than the alternative.
+
+Remaining, in priority order for the final ~2-3 days: full rehearsal of
+the demo three times against a wall clock (docs Day 6's own instruction,
+not yet done for real -- browser verification happened, a timed rehearsal
+hasn't); the P0b deterministic-lookup-table baseline docs §T's red-team
+item 2 explicitly recommends shipping ("Deterministic code could replace
+the ML model" is called "the strongest technical hit," and pre-empting it
+by shipping it as a fifth baseline is called "the strongest possible
+response") -- not yet built, flagged to the user as a real scope decision
+given remaining time rather than assumed; the 5-minute submission video;
+screenshots; final README pass; the v1.0-submission tag.

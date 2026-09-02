@@ -78,7 +78,7 @@ from app import repo
 from app.ai.normalizer import normalize
 from app.db import Conn
 from app.domain.fsm import Event, legal_events, transition
-from app.domain.types import CaseState, Cause
+from app.domain.types import TERMINAL_STATES, CaseState, Cause
 from app.policies.fixed import POLICY_VERSION as FIXED_POLICY_VERSION
 from app.policies.fixed import ScheduledStep, compute_fixed_schedule
 from data.generator import load_taxonomy
@@ -168,7 +168,20 @@ class DebitOutcomeEvent:
 
 
 def ingest_debit_succeeded(conn: Conn, event: DebitOutcomeEvent) -> IngestResult:
-    """First attempt (seq 1) succeeded — resolved before MRE ever engages."""
+    """First attempt (seq 1) succeeded — resolved before MRE ever engages.
+
+    Stale-event quarantine (docs §M.1: "delayed webhook — apply if
+    consistent with state; else quarantine", found via the docs §L.3
+    red-team exercise "deliver a stale event after case closure"): a
+    seq-1 outcome for a cycle_id that has already reached a terminal
+    state (e.g. a delayed/duplicated debit.succeeded arriving after the
+    cycle already closed some other way) used to fall straight into
+    `reserve_attempt_intent`'s `UNIQUE(cycle_id, sequence_no)` and surface
+    as a raw, unhandled `psycopg.errors.UniqueViolation` — a 500, not a
+    clean response. The event itself is still recorded (the audit trail
+    should show it arrived), but it is never re-applied against an
+    already-closed case.
+    """
     with conn.transaction():
         inserted = repo.insert_event(
             conn,
@@ -180,33 +193,47 @@ def ingest_debit_succeeded(conn: Conn, event: DebitOutcomeEvent) -> IngestResult
             payload={"amount": event.amount, "sequence_no": 1},
         )
         if inserted:
-            if repo.get_cycle(conn, event.cycle_id) is None:
+            cycle = repo.get_cycle(conn, event.cycle_id)
+            if cycle is None:
                 raise UnknownCycleError(event.cycle_id)
-            intent_id = repo.reserve_attempt_intent(
-                conn,
-                cycle_id=event.cycle_id,
-                sequence_no=1,
-                idempotency_key=f"{event.cycle_id}:seq1:{event.external_id}",
-                scheduled_for=event.occurred_at,
-            )
-            repo.update_attempt_outcome(
-                conn, intent_id, outcome="success", raw_reason=None, executed_at=event.occurred_at
-            )
-            repo.update_cycle_state(
-                conn,
-                event.cycle_id,
-                state=CaseState.RECOVERED.value,
-                attempts_used=1,
-                recovered_amount=event.amount,
-                closed_at=event.occurred_at,
-            )
-            repo.insert_audit(
-                conn,
-                actor="system",
-                cycle_id=event.cycle_id,
-                action="first_attempt_succeeded",
-                detail={"attempt_intent_id": intent_id},
-            )
+            if CaseState(cycle["state"]) in TERMINAL_STATES:
+                repo.insert_audit(
+                    conn,
+                    actor="system",
+                    cycle_id=event.cycle_id,
+                    action="stale_event_quarantined",
+                    detail={"event_type": "debit.succeeded", "cycle_state": cycle["state"]},
+                )
+            else:
+                intent_id = repo.reserve_attempt_intent(
+                    conn,
+                    cycle_id=event.cycle_id,
+                    sequence_no=1,
+                    idempotency_key=f"{event.cycle_id}:seq1:{event.external_id}",
+                    scheduled_for=event.occurred_at,
+                )
+                repo.update_attempt_outcome(
+                    conn,
+                    intent_id,
+                    outcome="success",
+                    raw_reason=None,
+                    executed_at=event.occurred_at,
+                )
+                repo.update_cycle_state(
+                    conn,
+                    event.cycle_id,
+                    state=CaseState.RECOVERED.value,
+                    attempts_used=1,
+                    recovered_amount=event.amount,
+                    closed_at=event.occurred_at,
+                )
+                repo.insert_audit(
+                    conn,
+                    actor="system",
+                    cycle_id=event.cycle_id,
+                    action="first_attempt_succeeded",
+                    detail={"attempt_intent_id": intent_id},
+                )
     conn.commit()
     return IngestResult(accepted=inserted, duplicate=not inserted)
 
@@ -235,7 +262,13 @@ def ingest_debit_failed(
     compute_plan: Callable[[date, Cause], PlanChoice] = _default_fixed_plan,
 ) -> IngestResult:
     """First attempt (seq 1) failed — the chosen policy engages for the
-    remaining budget. See module docstring for `compute_plan`."""
+    remaining budget. See module docstring for `compute_plan`.
+
+    Stale-event quarantine: see `ingest_debit_succeeded`'s docstring — the
+    same docs §L.3 red-team exercise applies here (a delayed/duplicated
+    seq-1 failure arriving after the cycle already reached a terminal
+    state), with the same fix: record the event, skip re-applying it.
+    """
     with conn.transaction():
         inserted = repo.insert_event(
             conn,
@@ -250,112 +283,127 @@ def ingest_debit_failed(
             cycle = repo.get_cycle(conn, event.cycle_id)
             if cycle is None:
                 raise UnknownCycleError(event.cycle_id)
-            mandate = repo.get_mandate(conn, event.mandate_id)
-            assert mandate is not None  # FK from cycles.mandate_id guarantees this
 
-            intent_id = repo.reserve_attempt_intent(
-                conn,
-                cycle_id=event.cycle_id,
-                sequence_no=1,
-                idempotency_key=f"{event.cycle_id}:seq1:{event.external_id}",
-                scheduled_for=event.occurred_at,
-            )
-
-            # Decline-string normalisation (docs §K.2): dictionary -> fuzzy
-            # -> LLM -> UNKNOWN. Never raises; UNKNOWN is a correct, first-
-            # class outcome under genuine uncertainty, not a failure.
-            normalization = (
-                normalize(
-                    event.raw_reason,
-                    issuer_code=mandate["issuer_code"],
-                    rail=mandate["rail"],
-                    taxonomy=_TAXONOMY,
-                )
-                if event.raw_reason is not None
-                else None
-            )
-            repo.update_attempt_outcome(
-                conn,
-                intent_id,
-                outcome="failure",
-                raw_reason=event.raw_reason,
-                executed_at=event.occurred_at,
-                canonical_cause=normalization.cause.value if normalization else None,
-                cause_confidence=normalization.confidence if normalization else None,
-                cause_source=normalization.source if normalization else None,
-            )
-
-            repo.insert_audit(
-                conn,
-                actor="system",
-                cycle_id=event.cycle_id,
-                action="cause_normalized",
-                detail={
-                    "attempt_intent_id": intent_id,
-                    "raw_reason": event.raw_reason,
-                    "cause": normalization.cause.value if normalization else None,
-                    "confidence": normalization.confidence if normalization else None,
-                    "source": normalization.source if normalization else None,
-                },
-            )
-
-            plan_choice = compute_plan(
-                cycle["due_date"], normalization.cause if normalization else Cause.UNKNOWN
-            )
-
-            state = CaseState.DUE
-            state = transition(state, Event.CYCLE_FAILED)
-            state = transition(state, Event.CAUSE_NORMALIZED)
-
-            if plan_choice.immediate_stop:
-                state = transition(state, Event.STOP_AND_ESCALATE)
-                state = transition(state, Event.ESCALATED)
-                assert state == CaseState.AWAITING_MANUAL
-                repo.update_cycle_state(conn, event.cycle_id, state=state.value, attempts_used=1)
+            if CaseState(cycle["state"]) in TERMINAL_STATES:
                 repo.insert_audit(
                     conn,
                     actor="system",
                     cycle_id=event.cycle_id,
-                    action="stopped_and_escalated",
-                    detail={
-                        "policy": plan_choice.policy_version,
-                        "expected_value": plan_choice.expected_value,
-                        "first_attempt_intent_id": intent_id,
-                    },
+                    action="stale_event_quarantined",
+                    detail={"event_type": "debit.failed", "cycle_state": cycle["state"]},
                 )
             else:
-                state = transition(state, Event.PLAN_READY)
-                assert state == CaseState.SCHEDULED
-                repo.update_cycle_state(conn, event.cycle_id, state=state.value, attempts_used=1)
+                mandate = repo.get_mandate(conn, event.mandate_id)
+                assert mandate is not None  # FK from cycles.mandate_id guarantees this
 
-                plan_id = repo.insert_plan(
+                intent_id = repo.reserve_attempt_intent(
                     conn,
                     cycle_id=event.cycle_id,
-                    model_version=plan_choice.policy_version,
-                    feature_hash="n/a",
-                    expected_value=plan_choice.expected_value,
-                    stop_reason=None,
-                    solver_ms=int(round(plan_choice.solver_ms)),
+                    sequence_no=1,
+                    idempotency_key=f"{event.cycle_id}:seq1:{event.external_id}",
+                    scheduled_for=event.occurred_at,
                 )
-                for step in plan_choice.steps:
-                    repo.insert_plan_step(
-                        conn,
-                        plan_id=plan_id,
-                        step_type=step.step_type,
-                        scheduled_for=step.scheduled_for,
-                        covers_debit_at=step.covers_debit_at,
+
+                # Decline-string normalisation (docs §K.2): dictionary ->
+                # fuzzy -> LLM -> UNKNOWN. Never raises; UNKNOWN is a
+                # correct, first-class outcome under genuine uncertainty,
+                # not a failure.
+                normalization = (
+                    normalize(
+                        event.raw_reason,
+                        issuer_code=mandate["issuer_code"],
+                        rail=mandate["rail"],
+                        taxonomy=_TAXONOMY,
                     )
+                    if event.raw_reason is not None
+                    else None
+                )
+                repo.update_attempt_outcome(
+                    conn,
+                    intent_id,
+                    outcome="failure",
+                    raw_reason=event.raw_reason,
+                    executed_at=event.occurred_at,
+                    canonical_cause=normalization.cause.value if normalization else None,
+                    cause_confidence=normalization.confidence if normalization else None,
+                    cause_source=normalization.source if normalization else None,
+                )
+
                 repo.insert_audit(
                     conn,
                     actor="system",
                     cycle_id=event.cycle_id,
-                    action="plan_created",
+                    action="cause_normalized",
                     detail={
-                        "plan_id": plan_id,
-                        "policy": plan_choice.policy_version,
-                        "first_attempt_intent_id": intent_id,
+                        "attempt_intent_id": intent_id,
+                        "raw_reason": event.raw_reason,
+                        "cause": normalization.cause.value if normalization else None,
+                        "confidence": normalization.confidence if normalization else None,
+                        "source": normalization.source if normalization else None,
                     },
                 )
+
+                plan_choice = compute_plan(
+                    cycle["due_date"], normalization.cause if normalization else Cause.UNKNOWN
+                )
+
+                state = CaseState.DUE
+                state = transition(state, Event.CYCLE_FAILED)
+                state = transition(state, Event.CAUSE_NORMALIZED)
+
+                if plan_choice.immediate_stop:
+                    state = transition(state, Event.STOP_AND_ESCALATE)
+                    state = transition(state, Event.ESCALATED)
+                    assert state == CaseState.AWAITING_MANUAL
+                    repo.update_cycle_state(
+                        conn, event.cycle_id, state=state.value, attempts_used=1
+                    )
+                    repo.insert_audit(
+                        conn,
+                        actor="system",
+                        cycle_id=event.cycle_id,
+                        action="stopped_and_escalated",
+                        detail={
+                            "policy": plan_choice.policy_version,
+                            "expected_value": plan_choice.expected_value,
+                            "first_attempt_intent_id": intent_id,
+                        },
+                    )
+                else:
+                    state = transition(state, Event.PLAN_READY)
+                    assert state == CaseState.SCHEDULED
+                    repo.update_cycle_state(
+                        conn, event.cycle_id, state=state.value, attempts_used=1
+                    )
+
+                    plan_id = repo.insert_plan(
+                        conn,
+                        cycle_id=event.cycle_id,
+                        model_version=plan_choice.policy_version,
+                        feature_hash="n/a",
+                        expected_value=plan_choice.expected_value,
+                        stop_reason=None,
+                        solver_ms=int(round(plan_choice.solver_ms)),
+                    )
+                    for step in plan_choice.steps:
+                        repo.insert_plan_step(
+                            conn,
+                            plan_id=plan_id,
+                            step_type=step.step_type,
+                            scheduled_for=step.scheduled_for,
+                            covers_debit_at=step.covers_debit_at,
+                        )
+                    repo.insert_audit(
+                        conn,
+                        actor="system",
+                        cycle_id=event.cycle_id,
+                        action="plan_created",
+                        detail={
+                            "plan_id": plan_id,
+                            "policy": plan_choice.policy_version,
+                            "first_attempt_intent_id": intent_id,
+                        },
+                    )
     conn.commit()
     return IngestResult(accepted=inserted, duplicate=not inserted)
 
