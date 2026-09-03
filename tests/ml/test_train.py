@@ -30,8 +30,8 @@ def test_fit_success_model_is_deterministic() -> None:
 
 def test_model_does_better_than_chance_on_its_own_training_distribution() -> None:
     """Not a rigorous holdout check (that's test_corpus's/train script's
-    job) -- just a sanity floor: the model should separate success from
-    failure at all, given the deliberately non-trivial signal §J.2's
+    job) — just a sanity floor: the model should separate success from
+    failure at all, given the deliberately non-trivial signal J.2's
     timing model injects."""
     rows = generate_corpus("train", samples_per_payer=2)
     features, labels = corpus_to_features_and_labels(rows)

@@ -5,7 +5,7 @@
   templates that get hand-tuned; JSON would work but is worse for that
   editing task, and YAML parsing is otherwise unavailable in the stdlib.
 - **FastAPI** (runtime): already the named framework for `api/` and
-  `simulator/` in the architecture (docs §H.1); the simulator service starts
+  `simulator/` in the architecture (docs H.1); the simulator service starts
   in this phase, so the dependency starts now rather than being deferred.
 - **uvicorn** (runtime): the ASGI server FastAPI needs to actually run.
 - **httpx** (dev): FastAPI's `TestClient` requires it for in-process testing

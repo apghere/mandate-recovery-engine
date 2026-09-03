@@ -1,4 +1,4 @@
-"""Recovery-case state machine (docs §P.3). Pure: no I/O, no clock, no network."""
+"""Recovery-case state machine (docs P.3). Pure: no I/O, no clock, no network."""
 from __future__ import annotations
 
 from enum import StrEnum

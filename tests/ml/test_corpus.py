@@ -12,7 +12,7 @@ def test_generate_corpus_is_deterministic() -> None:
 
 def test_row_count_matches_split_population_times_samples() -> None:
     rows = generate_corpus("calibration", samples_per_payer=3)
-    # 15% of 10,000 payers by seed-hash bucketing, not exactly 1,500 -- see
+    # 15% of 10,000 payers by seed-hash bucketing, not exactly 1,500 — see
     # data/generator.py's split assignment. Just check the multiple holds.
     assert len(rows) % 3 == 0
     assert len(rows) > 0

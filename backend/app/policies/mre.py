@@ -1,4 +1,4 @@
-"""MRE — the constrained-optimal-stopping policy (docs §K.4).
+"""MRE — the constrained-optimal-stopping policy (docs K.4).
 
 Solves the DP once for the cycle's current state and extracts the
 deterministic "assume every attempt fails" walk through the optimal
@@ -14,7 +14,7 @@ claim about what will happen.
 This is a real, documented scope boundary, not an oversight: a fully
 adaptive planner that re-solves after every real-world signal (issuer
 downtime, mid-plan revocation, a notice-send failure) is Phase 7+
-territory (that re-solve is literally docs §W3's "notice failure -> debit
+territory (that re-solve is literally docs W3's "notice failure -> debit
 denied -> plan re-solves around the shortened horizon" scenario — the
 policy engine's independent re-check at execution time is what makes
 *not* re-planning here safe rather than reckless). What's captured here

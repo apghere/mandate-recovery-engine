@@ -1,6 +1,6 @@
 """app/policies/live.py wired into the real `/events` endpoint (Phase 9):
 before this, `/events` always used the P0 fixed baseline regardless of
-payer context -- MRE was only ever reachable through replay/benchmark
+payer context — MRE was only ever reachable through replay/benchmark
 scripts, never through the actual product API. Exercised over real HTTP,
 same pattern as test_api.py.
 """
@@ -74,7 +74,7 @@ def test_live_events_endpoint_uses_mre_when_a_payer_row_exists(db: Conn) -> None
     assert plan is not None
     assert plan["model_version"] == "MRE-dp-v1"
 
-    # And the plan_steps carry real per-slot probabilities -- not the
+    # And the plan_steps carry real per-slot probabilities — not the
     # fixed baseline's None.
     steps = db.execute(
         "SELECT p_success FROM plan_steps ps JOIN plans p ON p.id = ps.plan_id "

@@ -1,7 +1,7 @@
 """Fixtures for integration tests: a real Postgres connection (docker
 compose's `db` service must be up — `make up`) and a real simulator server
 running over HTTP in a background thread, exercised exactly as the worker
-exercises it in production (docs §H.2 — no in-process shortcuts that would
+exercises it in production (docs H.2 — no in-process shortcuts that would
 let a bug in one side hide from the other).
 """
 from __future__ import annotations

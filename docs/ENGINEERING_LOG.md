@@ -12,7 +12,7 @@ own narrative because "what broke" is a graded question on its own.
 
 Solo build, Claude Code as engineering partner, working agreement in
 `CLAUDE.md`: one phase per session, tests first for `domain/`, honest
-reporting of negative results over spun ones (docs §I.17: "a credible
+reporting of negative results over spun ones (docs I.17: "a credible
 negative result outranks a fabricated positive one").
 
 ---
@@ -58,7 +58,7 @@ The trained GBM was already well-calibrated out of the box (ECE ≈1.2%).
 Isotonic calibration on top of it slightly *increased* held-out ECE at
 this corpus size. Kept the uncalibrated model rather than tuning until
 the calibration step looked useful — reported as a negative result, not
-hidden or worked around, per docs §I.17.
+hidden or worked around, per docs I.17.
 
 ---
 
@@ -99,7 +99,7 @@ recovered (75 wrongly abandoned) to 296/300, matching the baselines.
 
 **Bug: out-of-order webhook delivery crashed or leaked a DB error.**
 A debit outcome arriving before its `mandate.cycle.due` (webhooks are
-at-least-once, not ordered — docs §M.1's chaos matrix) used to either hit
+at-least-once, not ordered — docs M.1's chaos matrix) used to either hit
 a raw `AssertionError` or leak a Postgres `ForeignKeyViolation` straight
 through. Found writing the chaos tests specifically to probe this, which
 is the point of a chaos suite — it's supposed to find exactly this.
@@ -163,9 +163,9 @@ n_boot=5000, run once with explicit go-ahead) showed the opposite:
 `fixed` recovered significantly *more* gross rupees than `mre`, `greedy`,
 and even `oracle`.
 
-    fixed vs mre:    +6.97 rupees/payer, 95% CI [ 1.68, 13.86] -- significant
-    fixed vs greedy: +10.74 rupees/payer, 95% CI [ 1.28, 22.90] -- significant
-    fixed vs oracle:  +8.92 rupees/payer, 95% CI [ 0.39, 20.26] -- significant
+    fixed vs mre:    +6.97 rupees/payer, 95% CI [ 1.68, 13.86] — significant
+    fixed vs greedy: +10.74 rupees/payer, 95% CI [ 1.28, 22.90] — significant
+    fixed vs oracle:  +8.92 rupees/payer, 95% CI [ 0.39, 20.26] — significant
 
 I investigated this rather than accepting or explaining it away.
 Escalation cost was the first hypothesis (fixed never escalates, mre/
@@ -226,7 +226,7 @@ only ever reachable through replay/benchmark scripts — never through the
 product's own API. This means every prior claim about "the live system
 runs MRE" was, until this fix, not actually true of the running product,
 only of the offline scripts. Found while planning a demo scenario for
-docs §W2, not by inspection: writing down what the demo would click
+docs W2, not by inspection: writing down what the demo would click
 through made it obvious the API path had never been exercised end to
 end with MRE live.
 
@@ -287,7 +287,7 @@ at the top.
 
 ---
 
-## Day 7 — red-team exercises (docs §L.3)
+## Day 7 — red-team exercises (docs L.3)
 
 **Bug: a stale event delivered after case closure crashed with an
 unhandled DB exception.** Running the L.3 exercise "deliver a stale event
@@ -314,18 +314,18 @@ up from 203), lint, and mypy all green; `make replay-fixed` still
 byte-identical (469/500, ₹467,276.74). Full exercise log with the other
 five (which found nothing) is in `docs/SECURITY_REVIEW.md`.
 
-## Day 7 — the P0b baseline (docs §T red-team item 2)
+## Day 7 — the P0b baseline (docs T red-team item 2)
 
 **Near-miss: a dev-split benchmark run almost silently overwrote the
 locked test-split report.** Building P0b (a deterministic lookup-table
 baseline, added to pre-empt "deterministic code could replace the ML
-model" per docs §T item 2), the first run of `evaluation.runner` with the
+model" per docs T item 2), the first run of `evaluation.runner` with the
 new 5-policy `POLICIES` tuple used the default `--out-dir` (`reports/`).
 That directory already held the committed, one-time-locked test-split
 `BENCHMARK.md`/`benchmark.json` — this dev-split run overwrote both with
 different numbers before I'd noticed. `git status` caught it immediately,
 before anything was committed (both files showed modified); restored via
-`git checkout -- reports/BENCHMARK.md reports/benchmark.json`, then
+`git checkout — reports/BENCHMARK.md reports/benchmark.json`, then
 re-ran with an explicit `--out-dir reports/dev_p0b_baseline` so the
 locked artifact and the new dev-only comparison live in separate files.
 

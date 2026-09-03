@@ -1,4 +1,4 @@
-"""GREEDY — ablation policy (docs §F.1's "10x difference test" row:
+"""GREEDY — ablation policy (docs F.1's "10x difference test" row:
 "Retry is modelled as budgeted optimal stopping rather than
 classification"). Uses the identical calibrated success model MRE does,
 but a naive greedy timing choice instead of the DP's multi-step

@@ -1,8 +1,8 @@
-"""Simulator service — the independently-enforcing mandate rail (docs §H).
+"""Simulator service — the independently-enforcing mandate rail (docs H).
 
 Runs as a standalone FastAPI app so a bug in the caller (our own worker)
 cannot forge success on a fifth attempt or an out-of-window debit (docs
-§H.2: "if the simulator lived inside the app it would share the app's
+H.2: "if the simulator lived inside the app it would share the app's
 bugs"). State lives in this service's own SQLite store (simulator/store.py),
 never shared with the main app's Postgres schema.
 """
@@ -24,7 +24,7 @@ from simulator.store import AttemptRecord, SequenceCapViolation, Store
 # Non-peak execution window, UTC hour-of-day: 00:00-05:59 and 22:00-23:59.
 # Deliberately NOT imported from backend/app/domain/policy.py's identical
 # _PERMITTED_WINDOW_HOURS assumption — the whole point of a separate
-# simulator (docs §H.2) is that its enforcement is independently coded, so a
+# simulator (docs H.2) is that its enforcement is independently coded, so a
 # bug in one doesn't silently pass the other. The *values* are kept in sync
 # by hand because they represent the same real-world NPCI assumption; if you
 # change one, change both and say so in the commit.
@@ -49,7 +49,7 @@ class ExecuteRequest(BaseModel):
     scheduled_for: datetime
     issuer_code: str | None = None
     chronic_fail_propensity: float | None = Field(default=None, ge=0.0, le=1.0)
-    # Timing/balance-cycle context (docs §J.2, simulator/decline.py) — see
+    # Timing/balance-cycle context (docs J.2, simulator/decline.py) — see
     # this module's docstring on _world_seed_key for why these matter.
     # Optional, defaulting to None: a caller with no payer context (e.g. an
     # older/lighter integration) gets decide_outcome's documented flat
@@ -148,13 +148,13 @@ def create_app(*, db_path: str = ":memory:", chaos: ChaosConfig | None = None) -
         chaos_cfg = state["chaos"]
 
         if roll_5xx(chaos_cfg, rng):
-            # Deliberately not recorded: docs §H.3 — the attempt sequence
+            # Deliberately not recorded: docs H.3 — the attempt sequence
             # number must stay reserved by the *caller's* outbox, not
             # consumed here, so redelivery is what retries it.
             raise HTTPException(status_code=503, detail="simulated rail 5xx (chaos)")
 
         if roll_timeout(chaos_cfg, rng):
-            # docs §M.1: never retry an ambiguous debit. This DOES consume
+            # docs M.1: never retry an ambiguous debit. This DOES consume
             # the attempt slot — the rail accepted the request, it's the
             # response that's missing.
             _persist(store, req, "unknown", None)

@@ -1,4 +1,4 @@
-"""Thin HTTP layer over app.ingest (FR-1, docs §H.1's `/events`).
+"""Thin HTTP layer over app.ingest (FR-1, docs H.1's `/events`).
 
 Deliberately thin: this module owns request validation, webhook signature
 verification, and connection lifecycle only. All ingestion logic lives in
@@ -7,10 +7,10 @@ same functions directly without paying an HTTP round trip per mandate,
 while still exercising the identical idempotency/transaction behaviour a
 real webhook would hit.
 
-Signature verification (Phase 7, docs §H.1): HMAC-SHA256 over the raw
+Signature verification (Phase 7, docs H.1): HMAC-SHA256 over the raw
 request body, same mechanism scripts/webhook_capture.py's spike tool
 already proved against real Razorpay deliveries
-(docs/RAZORPAY_TESTMODE_FINDINGS.md §6-7), `hmac.compare_digest` to avoid a
+(docs/RAZORPAY_TESTMODE_FINDINGS.md 6-7), `hmac.compare_digest` to avoid a
 timing side-channel. When `RAZORPAY_WEBHOOK_SECRET` isn't configured
 (local dev, tests, replay scripts talking to app.ingest directly) this
 degrades to accepting unsigned requests — documented, not silent: it's the
@@ -124,7 +124,7 @@ async def post_event(request: Request) -> dict[str, bool]:
     except ValidationError as exc:
         raise HTTPException(status_code=422, detail=str(exc)) from exc
     except UnknownCycleError as exc:
-        # Out-of-order delivery (docs §M.1), not a bug: retryable, not 500.
+        # Out-of-order delivery (docs M.1), not a bug: retryable, not 500.
         raise HTTPException(status_code=409, detail=str(exc)) from exc
     return {"accepted": result.accepted, "duplicate": result.duplicate}
 
@@ -170,7 +170,7 @@ def _dispatch(envelope: EventEnvelope) -> IngestResult:
         )
         if envelope.type == "debit.succeeded":
             return ingest_debit_succeeded(conn, outcome_event)
-        # The live product policy (docs §K.4): cause-aware MRE scoring
+        # The live product policy (docs K.4): cause-aware MRE scoring
         # using this mandate's real payer context, falling back to the P0
         # fixed baseline when there's no payer row yet — see
         # app/policies/live.py's module docstring for why this is a

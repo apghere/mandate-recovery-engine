@@ -1,4 +1,4 @@
-"""Phase 7 chaos suite (docs §M.1's failure matrix): out-of-order event
+"""Phase 7 chaos suite (docs M.1's failure matrix): out-of-order event
 delivery and mid-plan mandate lifecycle events, exercised against the real
 ingestion + worker pipeline over live Postgres — not mocked, and not
 merely unit-tested in isolation, since the whole point of this suite is
@@ -134,13 +134,13 @@ def test_debit_succeeded_before_cycle_due_is_a_clean_retryable_error(db: Conn) -
     assert row is None
 
 
-# --- Stale event after case closure (docs §L.3 red-team exercise) ----------
+# --- Stale event after case closure (docs L.3 red-team exercise) ----------
 #
 # Found by actually running this exercise, not by inspection: a delayed or
 # duplicated seq-1 outcome arriving after the cycle already reached a
 # terminal state used to fall straight into reserve_attempt_intent's
 # UNIQUE(cycle_id, sequence_no) constraint and surface as a raw, unhandled
-# psycopg.errors.UniqueViolation -- a 500, not a clean response. Fixed in
+# psycopg.errors.UniqueViolation — a 500, not a clean response. Fixed in
 # ingest_debit_succeeded/ingest_debit_failed: a terminal-state cycle now
 # quarantines the event (recorded, audited, never re-applied) instead of
 # crashing.

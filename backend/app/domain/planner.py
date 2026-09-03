@@ -1,4 +1,4 @@
-"""The planner (docs §K.4) — the actual product. Exact backward induction
+"""The planner (docs K.4) — the actual product. Exact backward induction
 over (slot, attempts-remaining, notice-state). Pure: no I/O, no clock, no
 network — probabilities and costs are inputs, not computed here (that's
 ml/ for probabilities, and, eventually, a hazard model for opt-out/
@@ -12,14 +12,14 @@ within the required lead time). No expiry is modelled — once ready, a
 notice stays usable until consumed by an ATTEMPT. This is fine precisely
 *because* the real `authorize()` independently re-enforces the true
 7-day cap at execution time regardless of what the planner assumed (docs
-§H.2) — a planner/reality mismatch here surfaces as docs §W3's "notice
+H.2) — a planner/reality mismatch here surfaces as docs W3's "notice
 failure -> debit denied -> plan re-solves" scenario, not as a silent bug.
 
 Revocation and opt-out hazards are modelled as fixed per-action costs,
-not state- or history-dependent functions — docs §N.7's cut-order item #5
+not state- or history-dependent functions — docs N.7's cut-order item #5
 explicitly permits this ("Revocation hazard model -> fixed constant...
 rescues the project" at half a day's cost). The real hazard model
-(logistic regression over annoyance features, docs §K.3) is Phase 6/7
+(logistic regression over annoyance features, docs K.3) is Phase 6/7
 scope.
 """
 from __future__ import annotations
@@ -43,11 +43,11 @@ class PlannerConfig:
     attempt_cost: float = 0.0
     optout_hazard_cost: float = 5.0
     revoke_hazard_cost: float = 20.0
-    # Stopping rule (docs §K.4): stop when the best achievable value from
+    # Stopping rule (docs K.4): stop when the best achievable value from
     # continuing falls below E_manual + epsilon. Not a separate tuned
     # threshold — the DP's own root-node (and every state's) comparison.
     # Default 0 is a pure argmax; a small positive value additionally
-    # prefers stopping on near-ties, matching "decisive" framing in §R.
+    # prefers stopping on near-ties, matching "decisive" framing in R.
     stop_epsilon: float = 0.0
 
     def __post_init__(self) -> None:

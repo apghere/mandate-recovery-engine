@@ -1,4 +1,4 @@
-"""Versioned model artifacts (docs §K.3: "feature hash + model version
+"""Versioned model artifacts (docs K.3: "feature hash + model version
 stored" is part of every plan's audit trail — the `plans.model_version`
 column already sitting in migrations/0001_core.sql becomes real here).
 

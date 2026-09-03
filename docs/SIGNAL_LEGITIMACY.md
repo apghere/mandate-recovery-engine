@@ -5,7 +5,7 @@ assumption: *how do we know when a user will have money?* The honest
 answer is we don't, we never claimed to, and the architecture doesn't
 need to. This doc exists so that answer is on record, not just said once
 in a conversation — the same "the evidence layer cannot be faked" ethos
-that governs everything else in this repo (docs §F point 4).
+that governs everything else in this repo (docs F point 4).
 
 ## The one-sentence version
 
@@ -28,11 +28,11 @@ mechanism exists, out of scope for this build) ·
 | Signal | Status | Mechanism | MVP-suitable |
 |---|---|---|---|
 | Previous successful debit timestamps | VERIFIED | Razorpay's own Subscriptions/mandate records | Yes |
-| Previous failed debit timestamps + raw decline strings | VERIFIED | Razorpay's published error taxonomy (docs §A.4) | Yes |
+| Previous failed debit timestamps + raw decline strings | VERIFIED | Razorpay's published error taxonomy (docs A.4) | Yes |
 | Aggregated historical payment behaviour | VERIFIED | Derived from the above, on our own platform | Yes |
 | Mandate execution outcomes | VERIFIED | Core Subscriptions data | Yes |
 | Payment-method / issuer metadata | VERIFIED | Known at mandate creation | Yes |
-| Payment Downtime webhooks | VERIFIED | Razorpay's published API (docs §A.4) | Yes |
+| Payment Downtime webhooks | VERIFIED | Razorpay's published API (docs A.4) | Yes |
 | Bank account balance | **NOT AVAILABLE** | A payment aggregator has no live balance visibility via UPI/eNACH rails — that's the bank's domain | No |
 | Full bank/UPI transaction history, incoming credits, salary credits | **POSSIBLE WITH CONSENT** | India's Account Aggregator framework (RBI-regulated, via an NBFC-AA such as Setu/Finvu/CAMS) — a real, separate, consent-driven integration, never bundled with a payment-aggregator relationship by default | No — correctly out of scope for a 7-day build |
 | GPay balance / Slice balance / other bank accounts | **NOT AVAILABLE** | No mechanism exists for a third-party payment aggregator to read another provider's wallet balance | No |

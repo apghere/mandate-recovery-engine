@@ -1,4 +1,4 @@
-"""Isotonic calibration (docs §K.3, §N Day 3) -- the fitting half only.
+"""Isotonic calibration (docs K.3, N Day 3) — the fitting half only.
 The reliability-diagram plotting half lives in calibration_plot.py, split
 out on 2026-09-03 specifically so this module, which the live request-
 serving path imports for `fit_isotonic`, never pulls in matplotlib —
@@ -6,11 +6,11 @@ see that module's docstring for why that split matters for a Vercel
 Hobby deploy.
 
 Isotonic is fit on the `calibration` split, never reused elsewhere per
-docs §J.5. Brier score and ECE are then reported on a genuinely held-out
+docs J.5. Brier score and ECE are then reported on a genuinely held-out
 split (`dev`) — evaluating on the same data isotonic was fit on would
 trivially look well-calibrated regardless of whether the underlying model
 is any good. `test` is never touched here (see docs/RAZORPAY_TESTMODE_
-FINDINGS.md and §T's red-team point 3 for why that discipline matters).
+FINDINGS.md and T's red-team point 3 for why that discipline matters).
 """
 from __future__ import annotations
 

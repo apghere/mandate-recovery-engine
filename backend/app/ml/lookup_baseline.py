@@ -1,4 +1,4 @@
-"""P0b — the deterministic-lookup-table baseline (docs §T red-team item
+"""P0b — the deterministic-lookup-table baseline (docs T red-team item
 2: "deterministic code could replace the ML model... a lookup table over
 (cause x day-of-month) would capture a lot. Fix, and do it on Day 6:
 ship that lookup table as a fifth baseline, P0b, and report it. If the
@@ -16,7 +16,7 @@ replacement for `app/ml/inference.py::score_slots`'s output shape (same
 existing `compute_greedy_schedule` (`app/policies/greedy.py`) with zero
 changes to the scheduling logic itself — the *only* thing this baseline
 swaps out relative to `greedy` is the source of P(success). That is
-deliberate: it isolates exactly what §T item 2 asks about ("is the
+deliberate: it isolates exactly what T item 2 asks about ("is the
 calibrated model worth more than a simple table?"), the same way `greedy`
 vs `mre` isolates what the DP is worth over naive lookahead.
 """
@@ -33,7 +33,7 @@ from app.ml.inference import slot_datetime
 # A (cause, day_of_month) bucket with fewer than this many labeled
 # observations in the train split falls back to the cause-level rate
 # (and, if that's also sparse, the global rate) rather than reporting a
-# noisy small-sample average as if it were trustworthy -- the same
+# noisy small-sample average as if it were trustworthy — the same
 # small-sample-honesty concern app/ml/calibration_plot.py's reliability
 # diagram already annotates bin counts for for the same reason.
 MIN_BUCKET_SAMPLES = 20

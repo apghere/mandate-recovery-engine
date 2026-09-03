@@ -3,7 +3,7 @@ detail with the plan timeline and the fixed-schedule counterfactual,
 Prometheus /metrics, the audit ledger view with chain-validity, and the
 kill switch. Deliberately separate from api/app.py's ingestion endpoint —
 that file is the webhook surface; this one is read-mostly plus a single,
-explicitly-authorised admin write (docs §I.10: "operator overrides are
+explicitly-authorised admin write (docs I.10: "operator overrides are
 separate actions that are themselves authorised").
 
 Every response here is built from real repo.py reads over the same
@@ -78,7 +78,7 @@ def _prometheus_escape(label_value: str) -> str:
 
 @router.get("/metrics")
 def metrics() -> Response:
-    """Prometheus text exposition format (docs §I.11)."""
+    """Prometheus text exposition format (docs I.11)."""
     with get_connection() as conn:
         snap = repo.metrics_snapshot(conn)
 
@@ -138,7 +138,7 @@ def audit_overview(limit: int = 200) -> dict[str, Any]:
 
 
 class KillSwitchRequest(BaseModel):
-    scope: str  # "global" or "merchant:<merchant_id>" -- validated below
+    scope: str  # "global" or "merchant:<merchant_id>" — validated below
     active: bool
     set_by: str
 
@@ -158,7 +158,7 @@ def set_kill_switch(req: KillSwitchRequest) -> dict[str, Any]:
     with get_connection() as conn:
         repo.set_kill_switch(conn, req.scope, active=req.active, set_by=req.set_by)
         # This IS the "operator overrides are separate actions that are
-        # themselves authorised" record docs §I.10 requires — an explicit
+        # themselves authorised" record docs I.10 requires — an explicit
         # audit entry, not folded silently into the toggle itself.
         repo.insert_audit(
             conn,

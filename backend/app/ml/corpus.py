@@ -1,4 +1,4 @@
-"""Labeled training corpus generator (docs §N Day 3: "train GBM on
+"""Labeled training corpus generator (docs N Day 3: "train GBM on
 train; fit isotonic on calibration").
 
 Draws payers from a given split of data.generator's population and, for

@@ -1,6 +1,6 @@
 # Razorpay test-mode findings
 
-Spike date: 2026-08-26. Hard cap: 4 hours (docs §N Day 1).
+Spike date: 2026-08-26. Hard cap: 4 hours (docs N Day 1).
 
 Purpose: determine empirically what the real Razorpay test-mode surface can
 drive, so we know whether/where MRE can integrate with it versus needing to
@@ -19,7 +19,7 @@ dependency regardless of the outcome here).
       ₹500, every 2 months, qty 1)
 - [x] Could create a Subscription — `sub_TUUyRmF15TET3`, 3 cycles, immediate
       start, end date 03 Jan 2027. Link: `https://rzp.io/rzp/0ooZZQAn`
-- [ ] Could authorize it via UPI Autopay — **blocked, see §6**
+- [ ] Could authorize it via UPI Autopay — **blocked, see 6**
 - [ ] "Charge this now": not yet exercised (waiting on a UPI-authorized
       subscription so we're testing the right rail — see "Important testing
       decision" below)
@@ -28,7 +28,7 @@ Notes: Checkout on the subscription link offered **Cards** and **eMandate**
 only. **UPI Autopay did not appear as an option.** We deliberately did not
 complete authorization via eMandate or card, since that would validate the
 wrong payment rail (target is specifically UPI Autopay, which is the
-dominant/high-failure-rate rail per docs §A.3 — 8-15% failure vs 2-3% for
+dominant/high-failure-rate rail per docs A.3 — 8-15% failure vs 2-3% for
 cards). `sub_TUUyRmF15TET3` is being kept only as a lifecycle/webhook test
 resource, not as proof of UPI Autopay support.
 
@@ -78,12 +78,12 @@ carries no live-mode obligations, *before* submitting), then allocate
 **zero engineering hours to waiting on it**. Full rationale below.
 
 Why this is safe rather than a compromise: none of the project's P0
-MUST-HAVE features (§G.2 M1-M13) touch live UPI Autopay execution, and
+MUST-HAVE features (G.2 M1-M13) touch live UPI Autopay execution, and
 critically, **Razorpay's sandbox was never going to let us observe the
 NPCI 4-attempt cap, execution windows, or notice timing regardless of UPI
 Autopay status** — nothing suggests their test mode enforces or exposes
 those mechanics. That evidence source was always `simulator/`, by design
-(docs §H.2). Breaking down what actually needs live Razorpay evidence:
+(docs H.2). Breaking down what actually needs live Razorpay evidence:
 
 | Needs proving via | Real Razorpay evidence required? |
 |---|---|
@@ -108,20 +108,20 @@ time remains, `failure@razorpay` + paise-amount-coded error scenarios
 Stop at the time-box regardless of progress.
 
 **If it never unblocks:** no impact on the shippable project. Add to
-README Limitations (§S.1) as a named, honestly-framed gap — same energy as
-§F.1's "this is a simulator I wrote" honesty stance, not a failure to
+README Limitations (S.1) as a named, honestly-framed gap — same energy as
+F.1's "this is a simulator I wrote" honesty stance, not a failure to
 hide.
 
 **What we will NOT do as a result of this:** block Phase 3+ on KYC/Support
 turnaround; substitute eMandate for UPI Autopay in any claim or demo
 footage; write `RazorpayRailClient` UPI-integration code before it's
 actually enabled and testable (untested integration code against an
-unverified surface is a liability, not progress — see §4 below); overstate
+unverified surface is a liability, not progress — see 4 below); overstate
 UPI Autopay testing in the README/video if it doesn't happen.
 
 **Explicit decision:** we are NOT substituting eMandate for UPI Autopay.
 They are different rails with different failure/retry characteristics (docs
-§A.3's NPCI four-attempt cap and window rules are UPI Autopay-specific); an
+A.3's NPCI four-attempt cap and window rules are UPI Autopay-specific); an
 eMandate-based demo would not validate the target claim. Do not assume
 `sub_TUUyRmF15TET3` becomes UPI-capable retroactively once enabled — plan to
 create a fresh subscription post-enablement and confirm UPI actually appears
@@ -132,7 +132,7 @@ in checkout before treating it as validated.
 **Zero-external-dependency architecture is validated, not just confirmed as
 a fallback.** UPI Autopay isn't even reliably reachable in Razorpay's own
 test-mode sandbox without a support-gated enablement step, which by itself
-justifies §H.2's decision to make `simulator/` the independently-enforcing
+justifies H.2's decision to make `simulator/` the independently-enforcing
 mandate rail rather than depending on live Razorpay behavior for anything
 correctness-critical. Real Razorpay test mode, once unblocked, remains
 valuable for: validating realistic webhook payload shapes, and (P1,

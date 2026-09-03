@@ -2,10 +2,10 @@
 // after cdn.tailwindcss.com, before any utility classes are used, so
 // `bg-paper`, `text-ink`, `font-sans` etc. resolve consistently on every
 // page without triplicating the same config block (docs FR-12: "no
-// build step" -- this is the DRY mechanism available inside that
+// build step" — this is the DRY mechanism available inside that
 // constraint, same reasoning as shared.js for the JS helpers).
 //
-// Palette concept: a ledger, not a dashboard skin -- warm paper instead
+// Palette concept: a ledger, not a dashboard skin — warm paper instead
 // of stark white, ink instead of default slate-900, a single deep-indigo
 // "signature" accent for brand/nav/links that stays out of the way of
 // the state colors (emerald/rose/amber/orange), which carry real meaning

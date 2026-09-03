@@ -1,4 +1,4 @@
-"""The policy engine (docs §I.10). Pure: no I/O, no clock, no network — the
+"""The policy engine (docs I.10). Pure: no I/O, no clock, no network — the
 clock is always injected as `now`/`target_time` arguments.
 
 Checks, in order: kill switches, mandate status, opt-out, then action-specific

@@ -1,4 +1,4 @@
-"""Feature assembly: a pure function over MandateSnapshot (docs §K.3).
+"""Feature assembly: a pure function over MandateSnapshot (docs K.3).
 
 Used identically at training and inference time — the standard defence
 against train/serve skew, worth saying out loud per the docs. This module

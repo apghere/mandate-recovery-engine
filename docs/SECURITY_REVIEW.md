@@ -1,16 +1,16 @@
-# Security review — docs §L.3 red-team exercises
+# Security review — docs L.3 red-team exercises
 
 Run on 2026-09-02, against real Postgres and the real FastAPI app (via
 `fastapi.testclient.TestClient` — the same technique
 `tests/integration/test_api.py` uses, not mocked), plus the real
 in-process simulator for the exercise that needed it. All six exercises
-from docs §L.3 were executed for real, not reasoned about from reading
+from docs L.3 were executed for real, not reasoned about from reading
 the code. Two produced a genuine finding with a fix; the rest confirmed
 the existing design holds. Findings and fixes are recorded here per
-§L.3's own instruction ("record every finding and its fix in
+L.3's own instruction ("record every finding and its fix in
 docs/SECURITY_REVIEW.md").
 
-The failure matrix these exercises probe (docs §L.1/§M.1) is not
+The failure matrix these exercises probe (docs L.1/M.1) is not
 reproduced here — it lives in `README.md`'s Safety model section and in
 the module docstrings of `app/domain/policy.py`, `simulator/app.py`, and
 `app/ingest.py`. This file is the exercise log, not a second copy of the
@@ -96,7 +96,7 @@ correct signature -> HTTP 200
 accepted. Verification is `hmac.compare_digest` over HMAC-SHA256 of the
 raw body — the same mechanism `scripts/webhook_capture.py`'s spike tool
 proved against real Razorpay deliveries
-(`docs/RAZORPAY_TESTMODE_FINDINGS.md` §6-7).
+(`docs/RAZORPAY_TESTMODE_FINDINGS.md` 6-7).
 
 **Finding:** none. No fix needed.
 
@@ -129,7 +129,7 @@ duplicate sequence_no=4 rejected by DB UNIQUE constraint: UniqueViolation
 
 Then the same probe against the simulator's independently-coded rail
 (`simulator/app.py`, its own SQLite store — deliberately not sharing code
-with the app's Postgres schema, docs §H.2):
+with the app's Postgres schema, docs H.2):
 
 ```
 simulator /execute with sequence_no=5 -> HTTP 422
@@ -172,7 +172,7 @@ every *intended* call pattern, that a seq-1 outcome always arrives on a
 freshly-`DUE` cycle. A stale redelivery after closure broke that
 assumption and the raw DB constraint violation propagated straight
 through the HTTP layer as an unhandled exception (a 500 with a stack
-trace, not a clean, documented response) — exactly the gap docs §M.1's
+trace, not a clean, documented response) — exactly the gap docs M.1's
 failure matrix names ("delayed webhook... apply if consistent with
 state; else quarantine") but that hadn't actually been implemented for
 this pair of ingestion paths. (Compare `mandate.revoked`/
@@ -228,7 +228,7 @@ injected fabricated amount -> valid=False,
 an ungrounded number (not a literal substring of any whitelisted
 variable) and as a missing required field (the real amount, `500`, is no
 longer present in the body). This is the whitelist-grounding check
-(`app/ai/validator.py`'s `validate_notice`, docs §K.5 point 2) working
+(`app/ai/validator.py`'s `validate_notice`, docs K.5 point 2) working
 exactly as scoped: it's a numbers-only check, not full proper-noun NER —
 documented as a deliberate scope limit in the module's own docstring, not
 a gap discovered here.

@@ -1,5 +1,5 @@
 """RBI-compliant notice generation behind the deterministic validator
-(docs §K.5). The LLM drafts; `validate_notice` decides. On rejection: one
+(docs K.5). The LLM drafts; `validate_notice` decides. On rejection: one
 repair attempt with the validator's own errors attached, then a hard
 fallback to a static, always-valid template — an unvalidated LLM output
 never reaches a payer, and this is the module that guarantees it.

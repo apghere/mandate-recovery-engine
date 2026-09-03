@@ -16,7 +16,7 @@ VARS = notice.NoticeVariables(
 
 
 def test_fallback_template_is_always_self_consistent() -> None:
-    """No mocking -- the static template must pass its own validator by
+    """No mocking — the static template must pass its own validator by
     construction, since it's the last line of defense when everything
     else fails."""
     result = notice.generate_notice(VARS)

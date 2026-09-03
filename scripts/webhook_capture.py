@@ -5,7 +5,7 @@ backend/app/api — idempotent, wired to the event pipeline). This exists
 only to let us look at real payload shapes and verify HMAC signature
 mechanics *today*, using whichever rail is already authorized (Card /
 eMandate), without waiting on the UPI Autopay KYC block — see
-docs/RAZORPAY_TESTMODE_FINDINGS.md §6-7. Webhook delivery + signature
+docs/RAZORPAY_TESTMODE_FINDINGS.md 6-7. Webhook delivery + signature
 verification are identical regardless of which payment rail triggered the
 event, so this evidence is real and rail-agnostic.
 

@@ -1,12 +1,12 @@
 """Demo evidence for docs/SIGNAL_LEGITIMACY.md's predictability claim:
-`balance_volatility` alone -- a continuous, learned signal, not a
-hand-coded segment classifier -- already makes the success-probability
+`balance_volatility` alone — a continuous, learned signal, not a
+hand-coded segment classifier — already makes the success-probability
 curve sharp for a "predictable" payer and flat for an "irregular" one,
 which is what makes the planner behave more conservatively for the
 latter without anyone telling it which payer is which.
 
 Usage: `make demo-predictability`. Pure computation, no DB/network
-needed -- this is meant to be runnable live in a demo.
+needed — this is meant to be runnable live in a demo.
 """
 from __future__ import annotations
 
@@ -39,7 +39,7 @@ def main() -> None:
     print(f"irregular payer's spread   (best - worst): {max(irregular) - min(irregular):.2f}")
     print()
     print(
-        "Same model, same code path, no segment label anywhere -- the predictable\n"
+        "Same model, same code path, no segment label anywhere — the predictable\n"
         "payer gets a sharp curve the planner will wait for; the irregular payer\n"
         "gets a flat one, which makes the planner's optimal-stopping math naturally\n"
         "more conservative about spending scarce attempts on blind retries.\n"

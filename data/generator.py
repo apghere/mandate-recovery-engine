@@ -1,4 +1,4 @@
-"""Synthetic payer population generator (docs §J.2, docs/DATA_MODEL.md).
+"""Synthetic payer population generator (docs J.2, docs/DATA_MODEL.md).
 
 Deterministic: `generate_population(seed, n)` called twice with the same
 arguments produces byte-identical output. This is what makes the committed
@@ -84,7 +84,7 @@ HELD_OUT_PROBABILITY = 0.15
 
 # Cumulative upper bounds over a per-payer hash fraction in [0, 1).
 # train 60% / calibration 15% / dev 20% / test 5% — see docs/DATA_MODEL.md
-# "Resolving an ambiguity between §J.2 and §J.5".
+# "Resolving an ambiguity between J.2 and J.5".
 SPLIT_CUMULATIVE: tuple[tuple[str, float], ...] = (
     ("train", 0.60),
     ("calibration", 0.75),
@@ -222,7 +222,7 @@ def load_taxonomy(path: Path = TAXONOMY_PATH) -> dict[str, Any]:
 def sample_raw_decline(
     rng: random.Random, cause: Cause, taxonomy: dict[str, Any]
 ) -> tuple[str, bool, bool]:
-    """Returns (raw_string, held_out, adversarial) per docs §J.4."""
+    """Returns (raw_string, held_out, adversarial) per docs J.4."""
     templates: list[str] = taxonomy["causes"][cause.value]
     raw = rng.choice(templates)
     held_out = rng.random() < HELD_OUT_PROBABILITY

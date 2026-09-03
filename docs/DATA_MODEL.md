@@ -1,6 +1,6 @@
 # Data model — synthetic payer population and decline taxonomy
 
-Written before `data/generator.py` (docs §J.1 rule: distributions get frozen
+Written before `data/generator.py` (docs J.1 rule: distributions get frozen
 in writing first, so we cannot unconsciously tune the world to flatter our
 own policy later). Parameters below are frozen at end of Day 2 and not
 edited afterwards; if a bug is found in the generator's *code*, the fix goes
@@ -10,17 +10,17 @@ This generator embodies stated assumptions, not observed reality. The
 benchmark it feeds validates policy logic under those assumptions, not
 real-world uplift. That sentence appears verbatim in the README and video.
 
-## Resolving an ambiguity between §J.2 and §J.5
+## Resolving an ambiguity between J.2 and J.5
 
-The plan's §J.2 says "10,000 payers, 500 in the sealed test cohort" (5%).
-§J.5's split table lists test as "15% (500 mandates)". These are only
-consistent if §J.5's percentages are of *generated recovery cases*
+The plan's J.2 says "10,000 payers, 500 in the sealed test cohort" (5%).
+J.5's split table lists test as "15% (500 mandates)". These are only
+consistent if J.5's percentages are of *generated recovery cases*
 (mandate-cycles), not of the raw payer count — a payer can appear in
 multiple cycles over a multi-cycle horizon. For Phase 2 (this file + the
 generator), we only need the **payer-level** split, since case generation is
 a Phase 3 concern (worker/simulator interaction). Decision: split payers
 5% test / 15% calibration / 20% dev / 60% train, so the test cohort is
-exactly the 500 payers §J.2 states explicitly. §J.5's case-level splits are
+exactly the 500 payers J.2 states explicitly. J.5's case-level splits are
 revisited when the case-generation pipeline (Phase 3+) exists; this doesn't
 block Phase 2 and is not a numerical claim we make in the benchmark yet.
 
@@ -47,15 +47,15 @@ arithmetic, so `credit_day` never needs to handle month-length edge cases.
 ### `credit_day` by segment
 
 - **salaried**: 70% mass split evenly across `{1, 2, 7, 28}` (28 stands in
-  for "end of month" / "30" from §J.2 given the 28-day calendar), 30% mass
+  for "end of month" / "30" from J.2 given the 28-day calendar), 30% mass
   uniform over the remaining 24 days.
 - **gig**: near-uniform with a weekly mode — base uniform weight 1.0 per
   day, with days `{7, 14, 21, 28}` weighted 2.5x (weekly payout mode).
-- **self_employed**: uniform over 1-28. Not specified by §J.2; chosen as the
+- **self_employed**: uniform over 1-28. Not specified by J.2; chosen as the
   least-structured segment since self-employed income timing has no single
   dominant cycle.
 - **student**: 60% mass on `{1, 5}` (stipend/allowance-like), 40% uniform.
-  Not specified by §J.2; a plausible assumption for a small segment (5% of
+  Not specified by J.2; a plausible assumption for a small segment (5% of
   population) documented here rather than left silent.
 
 ### `credit_day` — what it is, and what it deliberately is not
@@ -105,7 +105,7 @@ swings harder between credit days)
 | Segment | shape | scale | mean |
 |---|---|---|---|
 | salaried | 4 | 0.15 | 0.60 |
-| gig | 2 | 0.40 | 0.80 (highest — §J.2 requirement) |
+| gig | 2 | 0.40 | 0.80 (highest — J.2 requirement) |
 | self_employed | 3 | 0.25 | 0.75 |
 | student | 3 | 0.20 | 0.60 |
 
@@ -123,7 +123,7 @@ exploit). Payers are assigned an issuer uniformly at random.
 ### `annoyance_sensitivity` — Beta(2, 5), then multiplied by a segment
 factor and clipped to [0, 1]: salaried x0.8, gig x1.0, self_employed x0.9,
 student x1.2 (assumption: students, contacted about smaller amounts, are
-more prone to opting out from repeated notices — not specified by §J.2,
+more prone to opting out from repeated notices — not specified by J.2,
 documented here as a design choice).
 
 ## Correlations realised by construction (not sampled independently)
@@ -146,14 +146,14 @@ documented here as a design choice).
 
 ## `mandate_amount`
 
-With probability 0.04 (exactly hitting §J.2's "4% above the ₹15,000 AFA
+With probability 0.04 (exactly hitting J.2's "4% above the ₹15,000 AFA
 threshold" by construction, not by chance): draw uniform(15,000, 100,000).
 Otherwise: draw `lognormal(mu=ln(600 * segment_multiplier), sigma=0.6)`
 clipped to `[50, 14,999]`, where `segment_multiplier` is salaried=1.4,
 gig=0.9, self_employed=1.1, student=0.5 (subscription/EMI-sized amounts
 scaled by segment purchasing power).
 
-## Canonical failure taxonomy (§J.3) — reference, not redefinition
+## Canonical failure taxonomy (J.3) — reference, not redefinition
 
 The 13-value `Cause` enum and its `RetryDisposition` mapping already live in
 `backend/app/domain/types.py` (`Cause`, `RetryDisposition`,
@@ -164,7 +164,7 @@ enum values, so a drift between the two would fail fast (generator refuses
 to load a taxonomy file whose cause keys don't match the domain enum
 exactly — see `data/generator.py::_validate_taxonomy`).
 
-## Raw decline strings (§J.4)
+## Raw decline strings (J.4)
 
 `data/taxonomy.yaml` holds a curated set of raw templates per cause,
 covering the required shapes: casing chaos, truncation, issuer jargon,
@@ -176,7 +176,7 @@ categories the LLM normaliser (Phase 6) must handle, not a specific count.
 At generation time: 15% of *instances* drawn are held back from ever being
 shown to the dictionary-matching stage (novel-string test set), and 3% of
 instances get an adversarial suffix appended (a prompt-injection attempt
-embedded in the remark field, per §J.4) — both are draw-time properties, not
+embedded in the remark field, per J.4) — both are draw-time properties, not
 template properties, so the same template can appear in both a
 dictionary-visible and a held-out instance.
 
@@ -203,7 +203,7 @@ regenerates the population at the pinned seed and asserts the hash matches
 — this is the thing that makes "the test split was touched exactly once"
 a checkable claim instead of a promise.
 
-## Rare and adversarial cases (§J.6)
+## Rare and adversarial cases (J.6)
 
 Not generated by `data/generator.py` (payer population has no notion of a
 "cycle" yet). These are properties of the *case/event* generator that

@@ -1,20 +1,20 @@
 # Vercel's Python builder reads this file at the repo root (docs/DEPLOY.md).
 # Pinned to exactly what's installed and tested locally (.venv), minus dev
-# tooling (pytest/ruff/mypy) and uvicorn -- Vercel's runtime wraps the ASGI
+# tooling (pytest/ruff/mypy) and uvicorn — Vercel's runtime wraps the ASGI
 # `app` object directly, it doesn't need a server to run one. Kept separate
 # from pyproject.toml's `dependencies` list rather than generated from it,
 # since pyproject's `[tool.setuptools.packages.find] where = ["backend"]`
 # and Vercel's own build both want their own single source of truth in
-# their own convention -- duplicated on purpose, not a drift risk in
+# their own convention — duplicated on purpose, not a drift risk in
 # practice since both are runtime deps, not something that changes often.
 #
 # matplotlib deliberately NOT listed here (pyproject.toml still has it,
-# for scripts/train.py's local use) -- app/ml/calibrate.py was split on
+# for scripts/train.py's local use) — app/ml/calibrate.py was split on
 # 2026-09-03 specifically so the live-serving import chain never reaches
 # app/ml/calibration_plot.py, the only place matplotlib is actually
 # imported. Confirmed empirically, not assumed: `'matplotlib' in
 # sys.modules` is False after importing api/index.py. Free-tier-relevant:
-# smaller function bundle, faster cold start, no benefit given up --
+# smaller function bundle, faster cold start, no benefit given up —
 # reports/calibration.png is a static file the deployed function never
 # regenerates (vercel.json routes /reports/* around it entirely).
 fastapi==0.141.1

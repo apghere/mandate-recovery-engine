@@ -121,8 +121,8 @@ def test_llm_malformed_json_falls_back_to_unknown(monkeypatch: pytest.MonkeyPatc
 def test_prompt_injection_worst_case_is_one_bounded_misclassification(
     monkeypatch: pytest.MonkeyPatch, suffix: str
 ) -> None:
-    """docs §L.3 red-team exercise: inject a prompt-injection remark and
-    confirm the worst outcome is a misclassification -- never an
+    """docs L.3 red-team exercise: inject a prompt-injection remark and
+    confirm the worst outcome is a misclassification — never an
     out-of-enum value, never a fabricated evidence_span, never anything
     that isn't already bounded by the schema. Simulates an LLM that
     *did* get tricked (returns the suffix's own demanded cause) to prove
@@ -156,7 +156,7 @@ def test_normalize_never_raises_regardless_of_llm_behaviour(
 
     monkeypatch.setattr(normalizer, "complete", _explode)
     with pytest.raises(RuntimeError):
-        # An unexpected (non-LlmUnavailable) exception is NOT swallowed --
+        # An unexpected (non-LlmUnavailable) exception is NOT swallowed —
         # only the documented failure mode (LlmUnavailable) is a fallback
         # trigger. This test pins that boundary deliberately.
         normalizer.normalize(

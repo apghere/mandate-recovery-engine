@@ -143,7 +143,7 @@ def test_idle_and_escalate_pass_once_gates_clear() -> None:
 
 @given(snapshot=case_snapshots())
 def test_authorize_is_pure_and_deterministic(snapshot) -> None:
-    """docs §Q: 'authorize() purity' — same inputs, same output, no mutation."""
+    """docs Q: 'authorize() purity' — same inputs, same output, no mutation."""
     before = replace(snapshot)
     v1 = authorize(ActionType.ATTEMPT, snapshot, NOW, NON_PEAK_TARGET)
     v2 = authorize(ActionType.ATTEMPT, snapshot, NOW, NON_PEAK_TARGET)
@@ -153,7 +153,7 @@ def test_authorize_is_pure_and_deterministic(snapshot) -> None:
 
 @given(snapshot=case_snapshots())
 def test_authorize_never_allows_attempt_over_budget(snapshot) -> None:
-    """docs §Q: 'no event sequence ever yields attempts_used > 4' — the
+    """docs Q: 'no event sequence ever yields attempts_used > 4' — the
     domain-level guarantee is that authorize() never says Allow once the
     budget is spent, for any other combination of fields."""
     if snapshot.attempts_used < MAX_ATTEMPTS:

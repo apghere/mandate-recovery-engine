@@ -1,6 +1,6 @@
-"""Worker loop: processes due plan_steps, drains the outbox (docs §H.1, H.3).
+"""Worker loop: processes due plan_steps, drains the outbox (docs H.1, H.3).
 
-Two-phase per attempt, on purpose (docs §H.3 — "the single most important
+Two-phase per attempt, on purpose (docs H.3 — "the single most important
 ordering rule"): (1) `process_due_plan_steps` authorizes and, if allowed,
 *reserves* the attempt_intents row and an outbox row in the same
 transaction; (2) `drain_outbox` is what actually calls the rail. A crash
@@ -125,7 +125,7 @@ def process_due_plan_steps(conn: Conn, *, now: datetime, limit: int = 200) -> Ti
                 conn, step["id"], status="cancelled", cancelled_reason="unhandled_step_type"
             )
         # Commit per step, not per batch: each step is one crash-safe unit
-        # of work (mirrors the outbox pattern's atomicity, docs §H.3), and
+        # of work (mirrors the outbox pattern's atomicity, docs H.3), and
         # releases that row's SKIP LOCKED lock promptly rather than holding
         # every lock in the batch for the whole tick's duration.
         conn.commit()
@@ -168,7 +168,7 @@ def _process_notify_step(
         )
 
     # The exact attempt this notice covers, set by whichever policy built
-    # the plan (docs §I.10's freshness check is an exact covers_debit_at
+    # the plan (docs I.10's freshness check is an exact covers_debit_at
     # match, not "within N days of the most recent notify" — see
     # app/policies/fixed.py's ScheduledStep docstring for why this can't
     # be assumed as a fixed offset for every policy). A NOTIFY step with
@@ -186,7 +186,7 @@ def _process_notify_step(
             result.notified, result.notify_denied, result.dispatched, result.attempt_denied
         )
 
-    # docs §K.5: the LLM drafts, the deterministic validator decides. Falls
+    # docs K.5: the LLM drafts, the deterministic validator decides. Falls
     # to a static, self-consistent template if the LLM is unavailable or
     # never produces a valid draft — never an unvalidated body persisted.
     notice_result = generate_notice(
@@ -249,7 +249,7 @@ def _process_attempt_step(
     )
     if not verdict.allowed:
         assert verdict.reason_code is not None
-        # Not consumed (docs §M.1): the plan_step is cancelled, but no
+        # Not consumed (docs M.1): the plan_step is cancelled, but no
         # attempt_intents row is ever reserved, and the cycle stays
         # SCHEDULED — the next pre-scheduled step still gets its chance.
         repo.mark_plan_step(
@@ -300,7 +300,7 @@ def _process_attempt_step(
         "attempt_intent_id": intent_id,
         "issuer_code": mandate["issuer_code"],
         "chronic_fail_propensity": payer["chronic_fail_propensity"] if payer else None,
-        # NUMERIC columns come back as Decimal (psycopg) -- not JSON
+        # NUMERIC columns come back as Decimal (psycopg) — not JSON
         # serializable by the outbox's Json(...) wrapper, hence the float().
         "mean_balance": float(payer["mean_balance"]) if payer else None,
         "balance_volatility": payer["balance_volatility"] if payer else None,
@@ -394,7 +394,7 @@ def _handle_rail_denied(
     result: DrainResult,
 ) -> DrainResult:
     # Our own scheduling disagreed with the independently-enforcing rail
-    # (docs §H.2) — a bug signal, not a transient failure. Don't retry;
+    # (docs H.2) — a bug signal, not a transient failure. Don't retry;
     # surface it loudly.
     repo.update_attempt_outcome(
         conn,

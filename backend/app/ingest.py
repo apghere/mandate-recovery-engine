@@ -1,4 +1,4 @@
-"""Event ingestion (FR-1, docs §G.2 M1).
+"""Event ingestion (FR-1, docs G.2 M1).
 
 Idempotent on events.external_id — the dedupe boundary is a Postgres UNIQUE
 constraint (repo.insert_event's ON CONFLICT DO NOTHING), not a Python-side
@@ -7,7 +7,7 @@ check, so it holds even under concurrent duplicate delivery.
 Design note on attempt #1 vs. the FSM: `mandate.cycle.due` only registers
 bookkeeping (mandate + cycle in state DUE) — no plan. NPCI's "one initial
 attempt plus up to three retries" means attempt #1 is fired by the
-merchant's ordinary collection flow, *outside* MRE (docs §I.4's "Current
+merchant's ordinary collection flow, *outside* MRE (docs I.4's "Current
 approach": "Fire debit at a fixed hour", no policy checked) — MRE only
 engages once that first attempt's outcome is known:
 
@@ -15,7 +15,7 @@ engages once that first attempt's outcome is known:
     machine is ever invoked. This deliberately does NOT go through
     `fsm.transition()` — DUE was never really an "engaged" FSM state for
     this cycle, it was just the bookkeeping default.
-  * `debit.failed` (seq 1): THIS is what docs §G.1's "a merchant's failed
+  * `debit.failed` (seq 1): THIS is what docs G.1's "a merchant's failed
     mandate cycle arrives as an event" refers to, and what
     `domain/fsm.py`'s DUE -[CYCLE_FAILED]-> DIAGNOSING -> ... path models.
     MRE (or `fixed`/`greedy`) takes over from here for the remaining
@@ -37,11 +37,11 @@ closures for benchmark purposes and deliberately hold cause fixed instead
 (see their own docstrings for why) rather than this module needing to
 know anything about payers or trained models. A PlanChoice with
 `immediate_stop=True` (the DP deciding, at the root, that no attempt is
-worth making — docs §W2) routes straight to ESCALATING -> AWAITING_MANUAL
+worth making — docs W2) routes straight to ESCALATING -> AWAITING_MANUAL
 instead of
 SCHEDULED, with zero further attempts consumed.
 
-`mandate.revoked` / `notification.opted_out` (Phase 7, docs §N Day 4):
+`mandate.revoked` / `notification.opted_out` (Phase 7, docs N Day 4):
 mandate-scoped, not cycle-scoped — a revoked mandate or an opt-out applies
 to every cycle currently in flight for it, not just whichever cycle
 happened to trigger the webhook. `_abandon_in_flight_cycles` resolves each
@@ -51,7 +51,7 @@ gate to slowly deny its way through every remaining plan_step one tick at
 a time and eventually get swept by `worker.sweep_exhausted_plans` under
 the dishonest label "plan_exhausted".
 
-Out-of-order delivery (docs §M.1's chaos matrix — webhooks are
+Out-of-order delivery (docs M.1's chaos matrix — webhooks are
 at-least-once, NOT ordered): a debit outcome for a cycle_id ingestion has
 never seen a mandate.cycle.due for raises `UnknownCycleError`, a clean,
 retryable signal — not a leaked FK-violation or an AssertionError. Because
@@ -170,8 +170,8 @@ class DebitOutcomeEvent:
 def ingest_debit_succeeded(conn: Conn, event: DebitOutcomeEvent) -> IngestResult:
     """First attempt (seq 1) succeeded — resolved before MRE ever engages.
 
-    Stale-event quarantine (docs §M.1: "delayed webhook — apply if
-    consistent with state; else quarantine", found via the docs §L.3
+    Stale-event quarantine (docs M.1: "delayed webhook — apply if
+    consistent with state; else quarantine", found via the docs L.3
     red-team exercise "deliver a stale event after case closure"): a
     seq-1 outcome for a cycle_id that has already reached a terminal
     state (e.g. a delayed/duplicated debit.succeeded arriving after the
@@ -265,7 +265,7 @@ def ingest_debit_failed(
     remaining budget. See module docstring for `compute_plan`.
 
     Stale-event quarantine: see `ingest_debit_succeeded`'s docstring — the
-    same docs §L.3 red-team exercise applies here (a delayed/duplicated
+    same docs L.3 red-team exercise applies here (a delayed/duplicated
     seq-1 failure arriving after the cycle already reached a terminal
     state), with the same fix: record the event, skip re-applying it.
     """
@@ -304,7 +304,7 @@ def ingest_debit_failed(
                     scheduled_for=event.occurred_at,
                 )
 
-                # Decline-string normalisation (docs §K.2): dictionary ->
+                # Decline-string normalisation (docs K.2): dictionary ->
                 # fuzzy -> LLM -> UNKNOWN. Never raises; UNKNOWN is a
                 # correct, first-class outcome under genuine uncertainty,
                 # not a failure.
@@ -476,7 +476,7 @@ def _abandon_in_flight_cycles(
         if fsm_event not in legal_events(current_state):
             # DUE/DIAGNOSING/PLANNING/ESCALATING are momentary states a
             # concurrent transaction essentially never observes mid-flight
-            # (docs §H.3 — each is entered and exited within one function
+            # (docs H.3 — each is entered and exited within one function
             # call); AWAITING_MANUAL + MANDATE_REVOKED has no FSM edge on
             # purpose (domain/fsm.py) — a human is already handling it, so a
             # later revocation doesn't silently override that in progress.

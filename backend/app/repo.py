@@ -348,7 +348,7 @@ def insert_outbox(
     next_attempt_at: datetime,
 ) -> int:
     # next_attempt_at is set explicitly here, not left to the column's own
-    # `DEFAULT now()` (migrations/0001_core.sql) -- that default is real
+    # `DEFAULT now()` (migrations/0001_core.sql) — that default is real
     # Postgres wall-clock time, which is only ever correct by coincidence
     # for a caller operating on an injected/simulated clock (every replay
     # script, every integration test, and app.workflows.worker itself,

@@ -1,4 +1,4 @@
-"""MRE wired into real ingestion + the real worker (docs §W2, §O.4's
+"""MRE wired into real ingestion + the real worker (docs W2, O.4's
 Phase 5 "register it as policy mre" prompt) — against live Postgres, not
 mocks.
 """
@@ -65,7 +65,7 @@ def _mre_compute_plan(p_success: tuple[float, ...]) -> object:
 
 
 def test_mre_zero_probability_escalates_immediately_zero_attempts_consumed(db: Conn) -> None:
-    """docs §W2: cause -> planner values every continuation at ~zero ->
+    """docs W2: cause -> planner values every continuation at ~zero ->
     stopping rule fires -> zero attempts consumed -> AWAITING_MANUAL."""
     cycle_id = "CYC-MRE-STOP"
     _seed_cycle(db, cycle_id)
@@ -137,7 +137,7 @@ def test_mre_favorable_probability_schedules_a_real_plan(db: Conn) -> None:
     assert any(s["step_type"] == "attempt" for s in steps)
 
     # The existing (policy-agnostic) worker can process this plan exactly
-    # like it processes P0's -- that's the whole point of the shared
+    # like it processes P0's — that's the whole point of the shared
     # (step_type, scheduled_for) shape.
     first_step = steps[0]
     process_due_plan_steps(db, now=first_step["scheduled_for"])

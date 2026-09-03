@@ -1,5 +1,5 @@
-"""Fit the success model (docs §K.3): HistGradientBoostingClassifier over
-the pure feature-assembly pipeline. Not an LLM — §K.1 rejects LLMs here
+"""Fit the success model (docs K.3): HistGradientBoostingClassifier over
+the pure feature-assembly pipeline. Not an LLM — K.1 rejects LLMs here
 explicitly as badly-calibrated probability estimators; a planner consumes
 expectations, not vibes.
 """

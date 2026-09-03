@@ -24,8 +24,8 @@ def test_favorable_slots_produce_a_non_empty_schedule() -> None:
 
 
 def test_zero_success_probability_everywhere_stops_immediately() -> None:
-    """The docs §W2 scenario: cause=MANDATE_REVOKED-style, no continuation
-    is worth anything -- zero attempts consumed, immediate escalation."""
+    """The docs W2 scenario: cause=MANDATE_REVOKED-style, no continuation
+    is worth anything — zero attempts consumed, immediate escalation."""
     config = PlannerConfig(n_slots=10, max_attempts=3)
     inputs = _inputs(10, tuple([0.0] * 10))
     plan = compute_mre_schedule(

@@ -1,8 +1,8 @@
-"""The reliability-diagram half of docs §K.3 -- split out of calibrate.py
+"""The reliability-diagram half of docs K.3 — split out of calibrate.py
 (2026-09-03, free-tier deploy pass) so the live request-serving path
 (app/policies/live.py -> app/ml/calibrate.py::fit_isotonic) never imports
 matplotlib. Every actual caller of *this* module is offline tooling
-(scripts/train.py, tests) -- nothing in the deployed Vercel function's
+(scripts/train.py, tests) — nothing in the deployed Vercel function's
 import chain reaches here, which matters concretely: Vercel Hobby caps
 function duration at 10s with no way to raise it, and matplotlib's own
 import cost was pure overhead on every cold start for a plot the live
@@ -62,9 +62,9 @@ def _plot_reliability_diagram(
     y_true: np.ndarray, raw_probs: np.ndarray, calibrated_probs: np.ndarray, out_path: str
 ) -> None:
     # Sparse bins (few samples) are visually identical to well-populated
-    # ones unless labelled -- and a sparse bin at the extreme end of the
+    # ones unless labelled — and a sparse bin at the extreme end of the
     # probability range is exactly what a red-team reviewer will poke at
-    # first (docs §T). Annotate every point with its n so it's never a
+    # first (docs T). Annotate every point with its n so it's never a
     # hidden gotcha.
     fig, axes = plt.subplots(1, 2, figsize=(10, 5), sharey=True)
     for ax, probs, title in (
@@ -83,7 +83,7 @@ def _plot_reliability_diagram(
         ax.set_title(title)
         ax.legend(loc="upper left", fontsize=8)
     axes[0].set_ylabel("observed success rate")
-    fig.suptitle("MRE success-model calibration (docs §K.3)")
+    fig.suptitle("MRE success-model calibration (docs K.3)")
     fig.tight_layout()
     fig.savefig(out_path, dpi=150)
     plt.close(fig)

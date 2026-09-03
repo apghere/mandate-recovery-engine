@@ -2,8 +2,8 @@
 diagram (CLAUDE.md's Phase 4 definition of done).
 
 `train` -> fit GBM. `calibration` -> fit isotonic (never reused elsewhere,
-docs §J.5). `dev` -> genuinely held-out Brier/ECE before/after. `test` is
-never touched here or anywhere before Day 5 (docs §J.5 / §T red-team
+docs J.5). `dev` -> genuinely held-out Brier/ECE before/after. `test` is
+never touched here or anywhere before Day 5 (docs J.5 / T red-team
 point 3).
 
 Usage: `make train`.
@@ -80,7 +80,7 @@ def main() -> None:
     print(f"  Brier score:  {report.brier_before:.4f} -> {report.brier_after:.4f}")
     print(f"  ECE:          {report.ece_before:.4f} -> {report.ece_after:.4f}")
     if report.ece_after > report.ece_before:
-        print("  NOTE: calibration made ECE worse on this run -- report honestly, don't hide it.")
+        print("  NOTE: calibration made ECE worse on this run — report honestly, don't hide it.")
 
 
 if __name__ == "__main__":

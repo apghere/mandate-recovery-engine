@@ -1,6 +1,6 @@
 """Score candidate slots for a real cycle using a trained Phase 4
 artifact + a real (persisted) payer's attributes — the bridge between
-ml/ (§K.3's "scorer") and the planner (§K.4), kept as a separate
+ml/ (K.3's "scorer") and the planner (K.4), kept as a separate
 component from both on purpose.
 """
 from __future__ import annotations

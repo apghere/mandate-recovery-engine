@@ -122,7 +122,7 @@ alone.
    green build log alone.
 
 `ANTHROPIC_API_KEY` / `RAZORPAY_WEBHOOK_SECRET` were left unset —
-documented fallbacks (README §4) handle their absence gracefully.
+documented fallbacks (README 4) handle their absence gracefully.
 
 ## Free-tier fit — analysed against the actual documented limits, not guessed
 

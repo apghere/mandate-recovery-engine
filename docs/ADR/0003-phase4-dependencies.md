@@ -2,7 +2,7 @@
 
 - **scikit-learn** (runtime): `HistGradientBoostingClassifier` for the
   success model and `IsotonicRegression` for calibration are named
-  explicitly in docs §K.3 ("GBM + isotonic is correct" — LLMs are
+  explicitly in docs K.3 ("GBM + isotonic is correct" — LLMs are
   explicitly rejected there as badly-calibrated probability estimators).
   No lighter alternative in the stdlib does either.
 - **numpy** (runtime): scikit-learn depends on it regardless; used

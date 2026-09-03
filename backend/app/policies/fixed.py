@@ -1,13 +1,13 @@
-"""P0 — the fixed-schedule baseline (docs §G.2 M6).
+"""P0 — the fixed-schedule baseline (docs G.2 M6).
 
 Not the product; the strawman it's benchmarked against. Reimplements the
 D+1/D+3/D+7 cadence merchants copy from American dunning guides (docs
-§E.1 "Current approach", §I.4, §R) faithfully — three attempts, each
+E.1 "Current approach", I.4, R) faithfully — three attempts, each
 preceded by a same-hour notice one day earlier (satisfying the >=24h RBI
 notice rule with room to spare), using the same allowed execution hour the
 simulator enforces independently. No AI, no optimization: this is the
 insurance-policy baseline that proves the loop works end-to-end with zero
-intelligence layered on top (docs §N Day 2).
+intelligence layered on top (docs N Day 2).
 """
 from __future__ import annotations
 
@@ -28,7 +28,7 @@ class ScheduledStep:
     step_type: str  # "notify" | "attempt"
     scheduled_for: datetime
     # Only meaningful for "notify" steps: the exact attempt time this
-    # notice covers (docs §I.10's freshness check is an *exact* match, not
+    # notice covers (docs I.10's freshness check is an *exact* match, not
     # "within N days of the most recent notify"). Explicit rather than
     # assumed, because not every policy pairs notify with an attempt at a
     # fixed offset — see app/policies/mre.py, which is free to notify

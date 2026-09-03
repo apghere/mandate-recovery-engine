@@ -4,7 +4,7 @@ dashboard (docs Day 6: "Seed/reset script so the demo is repeatable").
 Not `make replay-fixed`/`make replay-compare`'s job (500/300 payers each,
 built for aggregate statistics, not for "click into a specific case and
 see a specific, understandable story"). This seeds a handful of
-hand-picked scenarios that each demonstrate one of docs §I.5's four core
+hand-picked scenarios that each demonstrate one of docs I.5's four core
 workflows end to end, through the REAL `/events`-equivalent ingestion path
 (app.ingest + app.workflows.worker + app.policies.live) — not a shortcut —
 plus a modest background batch of real `dev`-split payers through the
@@ -15,16 +15,16 @@ W2 (stop-and-escalate) honesty note: the live scorer does not currently
 discriminate on decline cause at all, and empirically, no realistic
 (amount, balance, volatility) combination reliably drives the trained
 model's probability low enough to make continuing worse than E_MANUAL=150
-across a 3-attempt budget (both are documented gaps -- see CLAUDE.md's
+across a 3-attempt budget (both are documented gaps — see CLAUDE.md's
 Phase 9 notes and README.md's Limitations 3 and 4). Rather than fake a
 "live" trigger that doesn't actually occur through the real scorer today,
 the W2 case here supplies a directly-constructed low-probability plan to
-the same real DP solver (`app.policies.mre.compute_mre_schedule`) --
+the same real DP solver (`app.policies.mre.compute_mre_schedule`) —
 exactly what tests/integration/test_mre_ingestion.py already does to unit-
-test the stopping rule -- and says so, rather than silently presenting it
+test the stopping rule — and says so, rather than silently presenting it
 as something the live scorer produced on its own.
 
-Usage: `make demo-seed` (wipes and reseeds -- do not point this at
+Usage: `make demo-seed` (wipes and reseeds — do not point this at
 anything you care about). Run it immediately before a live demo/recording,
 not hours in advance: `make test`/`make check` truncate the same tables
 via the integration test fixtures and will leave whatever the last test
@@ -136,7 +136,7 @@ def _seed_cycle_and_attempt1(
 
 
 def _hopeless_compute_plan(amount: float) -> Callable[[date, Cause], PlanChoice]:
-    """W2's curated illustration -- see module docstring's honesty note.
+    """W2's curated illustration — see module docstring's honesty note.
     Supplies a directly-constructed p_success=0.0 curve to the real DP
     solver, the same technique tests/integration/test_mre_ingestion.py
     uses to unit-test the stopping rule in isolation.
@@ -144,7 +144,7 @@ def _hopeless_compute_plan(amount: float) -> Callable[[date, Cause], PlanChoice]
     Not p=0.02 or any other "low but plausible" value: empirically (see
     CLAUDE.md's Phase 9 notes), with the current cost defaults
     (E_MANUAL=150, PlannerConfig's hazard constants) the stopping rule
-    only fires at essentially zero probability -- even p=0.001 makes
+    only fires at essentially zero probability — even p=0.001 makes
     continuing worth more than stopping for any realistic mandate amount,
     since E_MANUAL is a fixed cost and the expected value of continuing
     scales with amount. That is itself a real, honestly-flagged limitation
@@ -179,7 +179,7 @@ def main() -> None:
 
         print("seeding curated scenarios...")
 
-        # W1 -- automatic recovery: a payer with real, decent funds context
+        # W1 — automatic recovery: a payer with real, decent funds context
         # who fails once (external attempt 1) then recovers via the live,
         # payer-aware MRE plan on a later attempt.
         upsert_payer(
@@ -199,7 +199,7 @@ def main() -> None:
             assert mandate is not None
             ingest_debit_failed(conn, outcome, compute_plan=select_compute_plan(conn, mandate))
 
-        # W2 -- stop and escalate: curated low-probability plan (see
+        # W2 — stop and escalate: curated low-probability plan (see
         # _hopeless_compute_plan's docstring for the honesty note).
         ingest_cycle_due(
             conn,
@@ -228,10 +228,10 @@ def main() -> None:
                 conn, hopeless_event, compute_plan=_hopeless_compute_plan(8000.0)
             )
 
-        # W3 -- compliance-blocked execution ("the demo failure"): a real
+        # W3 — compliance-blocked execution ("the demo failure"): a real
         # MRE plan, then the first notice is made to fail to send (docs
-        # §W3), so the first attempt gets denied RBI_NOTICE_NOT_SATISFIED
-        # at execution time -- independently of what the plan assumed.
+        # W3), so the first attempt gets denied RBI_NOTICE_NOT_SATISFIED
+        # at execution time — independently of what the plan assumed.
         upsert_payer(
             conn, payer_id="PAYER-DEMO-BLOCKED", segment="salaried", credit_day=8,
             mean_balance=9000.0, balance_volatility=0.35, issuer_code="ISS01",
@@ -304,9 +304,9 @@ def main() -> None:
             ticks += 1
 
     print()
-    print(f"done -- {ticks} clock ticks. Curated cases:")
+    print(f"done — {ticks} clock ticks. Curated cases:")
     print("  CYC-0-RECOVERY  (W1 automatic recovery)")
-    print("  CYC-0-HOPELESS  (W2 stop-and-escalate -- curated, see module docstring)")
+    print("  CYC-0-HOPELESS  (W2 stop-and-escalate — curated, see module docstring)")
     print("  CYC-0-BLOCKED   (W3 compliance-blocked execution, the demo failure)")
     print(f"  + {len(payers)} background cases from the dev split")
     print()

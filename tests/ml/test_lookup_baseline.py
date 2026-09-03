@@ -1,4 +1,4 @@
-"""P0b — the deterministic lookup-table baseline (docs §T red-team item
+"""P0b — the deterministic lookup-table baseline (docs T red-team item
 2). Pure-function tests on fit_lookup_table/lookup_rate/score_slots_lookup,
 plus one test against the real train-split corpus to confirm the fitted
 table is sane (matches tests/ml/test_calibrate.py's pattern of one
@@ -68,7 +68,7 @@ def test_lookup_rate_backs_off_to_cause_level_when_bucket_is_sparse() -> None:
     assert len(rows) >= MIN_CAUSE_SAMPLES
     table = fit_lookup_table(rows)
     assert table.bucket_counts[(Cause.MANDATE_REVOKED, 5)] < MIN_BUCKET_SAMPLES
-    # All labels are 0, so the cause-level backoff rate is exactly 0.0 --
+    # All labels are 0, so the cause-level backoff rate is exactly 0.0 —
     # no float tolerance needed for this comparison.
     assert lookup_rate(table, cause=Cause.MANDATE_REVOKED, day_of_month=5) == 0.0
     assert table.by_cause[Cause.MANDATE_REVOKED] == 0.0
@@ -109,7 +109,7 @@ def test_lookup_table_fitted_on_real_train_corpus_is_sane() -> None:
     table = fit_lookup_table(rows)
     assert 0.0 < table.global_rate < 1.0
     # INSUFFICIENT_FUNDS is the benchmark's held-fixed scoring cause and
-    # the most common cause in the corpus -- every day-of-month bucket for
+    # the most common cause in the corpus — every day-of-month bucket for
     # it should be well-populated, not falling back.
     for day in range(1, 29):
         assert table.bucket_counts.get((Cause.INSUFFICIENT_FUNDS, day), 0) >= MIN_BUCKET_SAMPLES

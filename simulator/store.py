@@ -2,7 +2,7 @@
 
 SQLite, not Postgres: this service exists to independently enforce the
 NPCI attempt cap and execution-window rules even when the caller (our own
-worker) is buggy (docs §H.2 — "if the simulator lived inside the app it
+worker) is buggy (docs H.2 — "if the simulator lived inside the app it
 would share the app's bugs"). That job needs durable UNIQUE/CHECK
 constraints, not SKIP LOCKED-style concurrent-queue semantics, so SQLite
 enforces the invariant just as strictly as Postgres would here.

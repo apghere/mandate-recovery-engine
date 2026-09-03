@@ -2,7 +2,7 @@
 wire format. Everything else in the app talks to "the rail" through this
 interface, so a future RazorpayRailClient (only ever written once/if real
 UPI Autopay is actually enabled and testable — see
-docs/RAZORPAY_TESTMODE_FINDINGS.md §7) is a drop-in, never a rewrite.
+docs/RAZORPAY_TESTMODE_FINDINGS.md 7) is a drop-in, never a rewrite.
 """
 from __future__ import annotations
 
@@ -25,7 +25,7 @@ class ExecuteResult:
 
 
 class RailDenied(Exception):
-    """The rail independently refused the action (docs §H.2) — e.g. the
+    """The rail independently refused the action (docs H.2) — e.g. the
     NPCI attempt cap or the execution window. Never retry blindly on this;
     it means our own scheduling was wrong, not that the call failed."""
 

@@ -12,12 +12,12 @@ rigor is Phase 8's job, deliberately deferred, not skipped.
 
 Also deferred: Phase 6's decline-string normaliser doesn't exist yet, so
 every case is scored as if cause=INSUFFICIENT_FUNDS (the dominant real
-UPI Autopay failure mode per docs §A.3) regardless of the simulator's
+UPI Autopay failure mode per docs A.3) regardless of the simulator's
 actual raw decline string. Fine for judging the *planner's* timing value
 in aggregate; would need the real normaliser for per-case accuracy.
 
 Draws from `dev` only — the sealed `test` split stays untouched (docs
-§J.5 / §T red-team point 3).
+J.5 / T red-team point 3).
 
 Usage: `make replay-compare`.
 """
@@ -126,7 +126,7 @@ def _greedy_compute_plan(
     artifact: ModelArtifact, payer: Payer
 ) -> Callable[[date, Cause], PlanChoice]:
     def compute_plan(due_date: date, _cause: Cause) -> PlanChoice:
-        # _cause ignored on purpose -- see module docstring: SCORING_CAUSE
+        # _cause ignored on purpose — see module docstring: SCORING_CAUSE
         # is held fixed for a fair aggregate timing comparison across
         # policies, independently of the simulator's real decline string.
         probs = score_slots(
@@ -152,7 +152,7 @@ def _mre_compute_plan(
     artifact: ModelArtifact, payer: Payer
 ) -> Callable[[date, Cause], PlanChoice]:
     def compute_plan(due_date: date, _cause: Cause) -> PlanChoice:
-        # _cause ignored on purpose -- see _greedy_compute_plan above.
+        # _cause ignored on purpose — see _greedy_compute_plan above.
         probs = score_slots(
             artifact, payer=_payer_context(payer), start_date=due_date, n_slots=N_SLOTS,
             attempt_sequence_no=2, cause=SCORING_CAUSE, consecutive_prior_failures=0,

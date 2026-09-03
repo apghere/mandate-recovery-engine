@@ -8,7 +8,7 @@ comparison across policies regardless of what actually declined (see
 their own docstrings for why that's the right call for a benchmark). This
 module is the one place a live event's *actually normalized* cause for
 *this specific case*, and a mandate's *actually persisted* payer row,
-both reach the planner's scoring step — the thing that makes docs §W2
+both reach the planner's scoring step — the thing that makes docs W2
 ("cause = MANDATE_REVOKED -> planner values every continuation at ~zero
 -> stopping rule fires -> zero attempts consumed") a real, live workflow
 and not only something exercised by a hand-constructed p_success array in
@@ -51,7 +51,7 @@ _artifact: ModelArtifact | None = None
 
 def get_artifact() -> ModelArtifact:
     """Train once, cache for the process's lifetime. Never touches dev or
-    test -- train + calibration splits only, same discipline as
+    test — train + calibration splits only, same discipline as
     scripts/train.py and evaluation/runner.py."""
     global _artifact
     if _artifact is not None:
@@ -74,8 +74,8 @@ def select_compute_plan(
     conn: Conn, mandate: dict[str, object]
 ) -> Callable[[date, Cause], PlanChoice]:
     """Builds the real, cause-aware compute_plan callback for this
-    mandate's payer. Falls back to the P0 fixed baseline -- gracefully,
-    not a crash -- when there's no payers row for this mandate yet (Phase
+    mandate's payer. Falls back to the P0 fixed baseline — gracefully,
+    not a crash — when there's no payers row for this mandate yet (Phase
     5 simplification: payer enrichment doesn't cover every mandate)."""
     payer_id = mandate["payer_id"]
     assert isinstance(payer_id, str)

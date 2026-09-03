@@ -1,4 +1,4 @@
-"""Decline-reason normaliser (docs §K.2): exact dictionary match ->
+"""Decline-reason normaliser (docs K.2): exact dictionary match ->
 fuzzy match (Levenshtein <= 2) -> LLM classifier -> UNKNOWN.
 
 Prompt-injection posture, verbatim from the plan: "I did not try to make
@@ -17,7 +17,7 @@ from typing import Any
 from app.ai.client import LlmUnavailable, complete, input_hash
 from app.domain.types import Cause
 
-CONFIDENCE_THRESHOLD = 0.80  # docs §K.1: ">=0.80 confidence to accept"
+CONFIDENCE_THRESHOLD = 0.80  # docs K.1: ">=0.80 confidence to accept"
 FUZZY_MAX_DISTANCE = 2
 
 _SYSTEM_PROMPT = """You classify a raw bank/PSP decline remark from an Indian \

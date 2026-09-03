@@ -4,9 +4,9 @@ end to end through the real ingestion -> worker -> outbox -> simulator path.
 This is CLAUDE.md's Phase 3 definition of done ("500-mandate fixed-policy
 replay completes"), NOT the sealed Day-5 paired-policy benchmark
 (evaluation/runner.py, Phase 8) — which is why this deliberately draws its
-mandates from the `dev` split, never `test`. Docs §J.5: the sealed test
+mandates from the `dev` split, never `test`. Docs J.5: the sealed test
 split is "touched exactly once, on Day 5"; reusing it here for routine
-development smoke-testing would be exactly the mistake §T's red-team
+development smoke-testing would be exactly the mistake T's red-team
 point 3 warns about, however well-intentioned.
 
 Simplification, documented rather than hidden: every mandate shares one
@@ -110,7 +110,7 @@ def main() -> None:
                 ),
             )
             # Attempt #1: fired by the naive external flow, not MRE (see
-            # docs §I.4 / app.ingest's module docstring) — no policy check.
+            # docs I.4 / app.ingest's module docstring) — no policy check.
             result = simulator.execute(
                 cycle_id=cycle_id,
                 sequence_no=1,

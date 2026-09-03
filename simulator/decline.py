@@ -7,7 +7,7 @@ never the canonical Cause — because that mirrors what a real payment rail
 gives you; normalisation into the 13-value taxonomy is a Phase 6 concern
 that belongs to the caller, not to "reality" itself.
 
-Timing sensitivity (docs §J.2): success probability is not just
+Timing sensitivity (docs J.2): success probability is not just
 issuer-reliability x chronic-failure-discount — it also depends on where
 in the payer's balance cycle a given day falls. Without this, a success
 model trained on this simulator's outputs would learn "issuer predicts
@@ -30,7 +30,7 @@ from data.generator import ISSUER_SUCCESS_RATES, load_taxonomy, sample_raw_decli
 DEFAULT_ISSUER_SUCCESS_RATE = 0.85
 DEFAULT_CHRONIC_FAIL_PROPENSITY = 0.08
 
-# The balance-cycle model (docs §DATA_MODEL.md's payer population section):
+# The balance-cycle model (docs DATA_MODEL.md's payer population section):
 # a payer's expected balance decays roughly linearly from a peak right
 # after `credit_day` down to zero just before the next one. Peak is 2x the
 # payer's `mean_balance` so the cycle-average equals `mean_balance` itself
@@ -64,7 +64,7 @@ def funds_sufficiency_probability(
 
 
 # Conditional on failure, which cause produced it. Weighted towards
-# INSUFFICIENT_FUNDS per docs §A.3 (the dominant real-world UPI Autopay
+# INSUFFICIENT_FUNDS per docs A.3 (the dominant real-world UPI Autopay
 # failure mode) and technical declines; NEEDS_HUMAN-disposition causes kept
 # rare since they represent genuinely exceptional account states.
 FAILURE_CAUSE_WEIGHTS: dict[Cause, float] = {

@@ -7,7 +7,7 @@ from enum import StrEnum
 
 
 class Cause(StrEnum):
-    """Canonical decline-reason taxonomy (docs §J.3)."""
+    """Canonical decline-reason taxonomy (docs J.3)."""
 
     INSUFFICIENT_FUNDS = "INSUFFICIENT_FUNDS"
     LIMIT_EXCEEDED = "LIMIT_EXCEEDED"
@@ -31,7 +31,7 @@ class RetryDisposition(StrEnum):
     NEEDS_HUMAN = "NEEDS_HUMAN"
 
 
-# Every cause must map to exactly one disposition (docs §J.3). Enforced by
+# Every cause must map to exactly one disposition (docs J.3). Enforced by
 # CAUSE_DISPOSITION covering all 13 enum members — see test_types.py.
 CAUSE_DISPOSITION: dict[Cause, RetryDisposition] = {
     Cause.INSUFFICIENT_FUNDS: RetryDisposition.RETRY_TIMING_SENSITIVE,
@@ -58,7 +58,7 @@ class ActionType(StrEnum):
 
 
 class CaseState(StrEnum):
-    """Recovery-case state machine (docs §P.3)."""
+    """Recovery-case state machine (docs P.3)."""
 
     DUE = "DUE"
     DIAGNOSING = "DIAGNOSING"

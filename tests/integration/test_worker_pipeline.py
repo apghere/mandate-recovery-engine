@@ -1,6 +1,6 @@
 """End-to-end integration: real Postgres (docker compose `db`), a real
 simulator server over HTTP, and the actual ingestion + worker + outbox code
-path — no in-process shortcuts (docs §H.2).
+path — no in-process shortcuts (docs H.2).
 
 Requires `make up` to have been run. Skips gracefully if Postgres isn't
 reachable (see conftest.py's `db` fixture).
@@ -112,9 +112,9 @@ def test_first_attempt_succeeded_resolves_without_engaging_mre(db: Conn) -> None
 
 
 def test_first_attempt_failure_is_normalized_and_persisted(db: Conn) -> None:
-    """docs §K.2 end-to-end: the raw decline string on the external seq-1
+    """docs K.2 end-to-end: the raw decline string on the external seq-1
     failure gets normalized (dictionary match here, since "INSUFFICIENT
-    FUNDS" is a literal taxonomy template -- no LLM/network involved) and
+    FUNDS" is a literal taxonomy template — no LLM/network involved) and
     the result actually lands on the attempt_intents row, not just logged
     somewhere."""
     _seed_mandate_and_cycle(db, "CYC-NORM")
@@ -174,7 +174,7 @@ def test_first_attempt_failed_seeds_exactly_three_remaining_attempt_steps(db: Co
 def test_worker_denies_attempt_without_a_satisfying_notice(
     db: Conn, simulator_base_url: str
 ) -> None:
-    """The killer-demo scenario (docs §W3 / §R 2:35-3:05): if the notice
+    """The killer-demo scenario (docs W3 / R 2:35-3:05): if the notice
     never went out, the policy engine denies the debit at execution time —
     independently of the plan — and the attempt is not consumed."""
     _seed_mandate_and_cycle(db, "CYC-NN")

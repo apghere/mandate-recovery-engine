@@ -70,7 +70,7 @@ def test_gig_segment_has_higher_mean_volatility_than_salaried() -> None:
 
 def test_committed_test_split_hash_matches_default_population() -> None:
     """The load-bearing test: proves the sealed test split hasn't drifted
-    from what's committed in data/TEST_SPLIT_SHA256 (docs §J.5)."""
+    from what's committed in data/TEST_SPLIT_SHA256 (docs J.5)."""
     committed = TEST_SPLIT_HASH_PATH.read_text(encoding="utf-8").strip()
     payers = generate_population(seed=GLOBAL_SEED)
     assert sealed_test_split_sha256(payers) == committed

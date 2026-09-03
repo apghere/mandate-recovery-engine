@@ -1,12 +1,12 @@
-"""Injectable chaos configuration for the simulator (docs §G.2 M4, §M.1).
+"""Injectable chaos configuration for the simulator (docs G.2 M4, M.1).
 
 Two knobs, matched to failure-matrix rows that are correctness-critical
 rather than merely inconvenient:
 
 - `error_5xx_rate`: the rail is down. Caller must retry; the attempt's
-  sequence number stays reserved (docs §H.3) and nothing is recorded here.
+  sequence number stays reserved (docs H.3) and nothing is recorded here.
 - `timeout_rate`: the rail accepted the request but the outcome is
-  genuinely unknown (docs §M.1: "Never retry the debit. Mark
+  genuinely unknown (docs M.1: "Never retry the debit. Mark
   outcome=unknown, reconcile by polling."). This is recorded — it consumes
   the attempt slot, unlike a 5xx.
 

@@ -36,7 +36,7 @@ architecture diagram or a title card)
 > human, instead of blindly spending the budget."
 
 Say the "what it's not" line on camera, not just in the README — it's
-the strongest pre-emption of the "it's an LLM wrapper" attack (docs §T
+the strongest pre-emption of the "it's an LLM wrapper" attack (docs T
 item 1): *"There is no agent here, and no LLM making a money decision.
 The language model does exactly two things: read a bank's decline string
 and decide when it's not worth continuing to write text to a human — it
@@ -45,7 +45,7 @@ has zero authority over timing or execution."*
 ## 1:15–2:15 — Architecture, start at the best 200 lines
 
 Screen: `backend/app/domain/planner.py` open in an editor, or the
-Mermaid diagram in README.md §5.
+Mermaid diagram in README.md 5.
 
 > "Start reading here. This is exact backward induction over (slot,
 > attempts remaining, notice state) — not a heuristic, not an LLM. It's
@@ -115,7 +115,7 @@ Screen: `http://localhost:8000/dashboard/benchmark.html`.
 > real but modest, and a hazard-avoidance rationale the benchmark can't
 > yet measure."
 
-Then, in the same breath, the pre-emption docs §T item 4 says to concede
+Then, in the same breath, the pre-emption docs T item 4 says to concede
 before anyone raises it:
 
 > "And one more thing I'll say before you ask: I own the simulated world
@@ -125,7 +125,7 @@ before anyone raises it:
 > sees the identical realised draws. I'm not going to pretend otherwise."
 
 If you built and are including P0b (the deterministic lookup-table
-baseline, README §8): *"I also pre-built the objection 'a lookup table
+baseline, README 8): *"I also pre-built the objection 'a lookup table
 could do this' — a plain (cause, day-of-month) table, same training data
 as the model. On the dev split it's statistically indistinguishable from
 the naive fixed schedule, and significantly behind the DP-planned policy.
@@ -157,7 +157,7 @@ for hardest.
 ## Things to have memorised, not read off a screen
 
 The value function the planner solves, sketched from memory if asked
-live (docs §T item 9: "did you build this, or did an LLM? ... deriving
+live (docs T item 9: "did you build this, or did an LLM? ... deriving
 the value function on a whiteboard from memory ... is the
 highest-probability live question"): at each state, compare the value of
 attempting now (p·success_value + (1-p)·(continue - attempt_cost -

@@ -54,7 +54,7 @@ def test_due_date_for_is_within_the_spread_window() -> None:
 def test_due_date_for_varies_across_payers() -> None:
     # Not a strict guarantee for any two arbitrary IDs, but across a batch
     # of distinct payer_ids the hash-derived offsets should not collapse
-    # to a single value -- that's the whole point of this function.
+    # to a single value — that's the whole point of this function.
     dates = {_due_date_for(_payer(f"PAYER-{i}")) for i in range(30)}
     assert len(dates) > 1
 

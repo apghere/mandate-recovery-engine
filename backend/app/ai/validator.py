@@ -1,11 +1,11 @@
-"""Deterministic NoticeValidator (docs §K.5). The LLM drafts; this module
+"""Deterministic NoticeValidator (docs K.5). The LLM drafts; this module
 decides — every check here is pure, needs no LLM call, and is directly
 unit-testable, which is what makes "policy-violation rate 0.00%,
-asserted in CI" (docs §I.15) a claim we can actually check rather than
+asserted in CI" (docs I.15) a claim we can actually check rather than
 hope for.
 
 Scope, stated plainly rather than left implicit: the whitelist-grounding
-check (§K.5 point 2, "every number, date and proper noun... must appear
+check (K.5 point 2, "every number, date and proper noun... must appear
 in the supplied variable set") is implemented here for **numbers** —
 the highest-stakes hallucination target (a wrong amount or a wrong
 reference number is the actual compliance risk RBI's rule exists to
@@ -34,7 +34,7 @@ MAX_LENGTH_BY_CHANNEL: dict[str, int] = {"sms": 320, "email": 2000, "push": 200}
 OPT_OUT_MARKERS = ("stop", "opt-out", "opt out", "unsubscribe")
 
 # Threats, fabricated legal/credit consequences, manufactured urgency —
-# docs §K.5 point 3. Not exhaustive; the point is a real, checkable floor,
+# docs K.5 point 3. Not exhaustive; the point is a real, checkable floor,
 # not a claim of completeness.
 PROHIBITED_PATTERNS: tuple[re.Pattern[str], ...] = (
     re.compile(r"\blegal action\b", re.IGNORECASE),

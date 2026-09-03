@@ -11,8 +11,20 @@ Built for the Razorpay AI Buildathon 2026, Track 03 (AI Revenue Recovery).
 **Live demo:** [mandate-recovery-engine.vercel.app/dashboard/index.html](https://mandate-recovery-engine.vercel.app/dashboard/index.html)
 — a read-first browsing surface over a once-seeded demo dataset, not a live
 transactional environment; see [`docs/DEPLOY.md`](docs/DEPLOY.md) for exactly
-what that means and doesn't. The documented `docker compose up` below remains
-the primary, fully-live way to run this.
+what that means and doesn't.
+
+### Quick start (fully live, local — three commands, no cloud account)
+
+```bash
+make dev              # create venv, install deps
+make up                # start Postgres, run migrations
+make demo-seed         # seed a curated, repeatable demo scenario
+```
+
+Then, in a second terminal: `.venv/bin/python -m uvicorn app.api.app:app --app-dir backend --reload`
+and open `http://localhost:8000/dashboard/index.html`. Full detail, including the other
+`make` targets (`make check`, `make bench`, `make replay-fixed`) and what each curated demo case
+shows, is in the Setup section below.
 
 ---
 
@@ -91,7 +103,7 @@ flowchart TB
         fsm["domain/fsm.py — recovery-case state machine"]
     end
 
-    subgraph pg[("PostgreSQL 16")]
+    subgraph pg["PostgreSQL 16"]
         tables["events · mandates · cycles · attempt_intents · plans ·
 plan_steps · notifications · decisions · audit_ledger · outbox"]
     end
@@ -202,7 +214,7 @@ investigation, including the dev-split runs, the E_MANUAL sensitivity sweep (rob
 {100, 150, 250}), and the exact SQL used to rule out the first hypothesis, is in `CLAUDE.md`'s
 Phase 8 notes.
 
-**P0b — the deterministic-lookup-table baseline** (docs §T red-team item 2, "a deterministic
+**P0b — the deterministic-lookup-table baseline** (docs T red-team item 2, "a deterministic
 lookup table could replace the ML model — ship it as a fifth baseline and report it"). Added after
 the sealed test split was already spent, so this comparison runs on `dev` only, by the same
 touch-once discipline that governs the locked result above — not a second use of `test`.
@@ -270,7 +282,7 @@ make demo-seed         # seed a curated, repeatable demo scenario (see below)
 Then in a separate terminal: `.venv/bin/python -m uvicorn app.api.app:app --reload` (run from the
 repo root) and visit `http://localhost:8000/dashboard/index.html`.
 
-`make demo-seed` wipes and reseeds three hand-picked cases, one per docs §I.5 workflow —
+`make demo-seed` wipes and reseeds three hand-picked cases, one per docs I.5 workflow —
 `CYC-0-RECOVERY` (W1, automatic recovery), `CYC-0-HOPELESS` (W2, stop-and-escalate — see
 `scripts/demo_seed.py`'s docstring for an honesty note on how this one is constructed),
 `CYC-0-BLOCKED` (W3, the compliance-blocked "demo failure", sorted to the top of the case list) —
@@ -391,5 +403,5 @@ is now publicly shipping.
 *Full engineering history — every bug found, every architectural decision reconsidered, and why —
 is in `CLAUDE.md` (working log), [`docs/ENGINEERING_LOG.md`](docs/ENGINEERING_LOG.md) (the "what
 broke" narrative, pulled out on its own), `docs/ADR/` (numbered decision records), and
-[`docs/SECURITY_REVIEW.md`](docs/SECURITY_REVIEW.md) (the docs §L.3 red-team exercises, run for
+[`docs/SECURITY_REVIEW.md`](docs/SECURITY_REVIEW.md) (the docs L.3 red-team exercises, run for
 real — one of six found a genuine bug, now fixed).*

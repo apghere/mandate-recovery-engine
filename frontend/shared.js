@@ -1,5 +1,5 @@
 // Tiny shared helpers for the dashboard's 3 screens (Phase 9, docs FR-12).
-// No framework, no build step -- vanilla fetch() against the same API the
+// No framework, no build step — vanilla fetch() against the same API the
 // worker/ingest pipeline writes through, on purpose (dashboard doc note:
 // "no separate materialized view, no caching layer").
 
@@ -15,7 +15,7 @@ const STATE_COLORS = {
   ABANDONED: "bg-rose-100 text-rose-800",
 };
 
-// A small dot, not just color, in front of the label -- state should be
+// A small dot, not just color, in front of the label — state should be
 // legible even to someone who can't distinguish the hues (docs' own
 // "communicate the intelligence of the system" demo principle extends to
 // not making that communication color-vision-dependent).
@@ -33,7 +33,7 @@ function stateBadge(state) {
     <span class="w-1.5 h-1.5 rounded-full ${dot}"></span>${state}</span>`;
 }
 
-// A compact horizontal probability bar -- p_success as a shape, not just
+// A compact horizontal probability bar — p_success as a shape, not just
 // a number, so a row of slots is scannable at a glance rather than
 // requiring the reader to parse four decimals.
 function probBar(p) {
