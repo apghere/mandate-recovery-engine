@@ -4,15 +4,22 @@ Docs Day 7: "Record the video. Budget 8-10 takes. 1080p, subtitles, real
 system, no mockups." This script is the rehearsal aid — read it, cut it
 in your own words, then do the wall-clock rehearsal (Day 6's own
 instruction) three times before the real take. Every command and screen
-below was verified working today (2026-09-02) against a fresh
-`make demo-seed`. Total budget: 5:00. Pad time is deliberately built in —
-if you're behind at any checkpoint, cut the next section's detail, not
-its existence.
+below was re-verified on 2026-09-03 against the redesigned dashboard and
+a fresh `make demo-seed` — the counterfactual panel described in section
+2:15–3:45 is now visually distinct (accent-tinted column vs. neutral
+column, a computed attempt-count delta line), not just data in
+identical-looking boxes, so that beat lands faster on screen than it used
+to. Total budget: 5:00. Pad time is deliberately built in — if you're
+behind at any checkpoint, cut the next section's detail, not its
+existence.
 
 **Before recording:** `make demo-seed` (right before, not hours in
 advance — `make test` truncates the same tables), then start the API
-(`.venv/bin/python -m uvicorn app.api.app:app --reload`, from repo root).
-Have `docs/screenshots/` open as a fallback if anything misbehaves live.
+(`.venv/bin/python -m uvicorn app.api.app:app --app-dir backend --reload`,
+from repo root). Have `docs/screenshots/` open as a fallback if anything
+misbehaves live — and the live deploy
+(https://mandate-recovery-engine.vercel.app/dashboard/index.html) as a
+second fallback if your local environment itself misbehaves.
 
 ---
 
@@ -141,6 +148,15 @@ The value is in the planning, not just having some probability estimate."*
 > That's Mandate Recovery Engine — a constrained planner with a real
 > stopping rule, for a country-specific, regulator-created problem, built
 > and evaluated honestly. Thanks for watching."
+
+If you have the extra 10 seconds and it fits your take, this is the
+strongest closing line available — it's externally confirmed, not
+self-claimed: *"Since I built this, Razorpay's own Agent Studio shipped a
+production Subscription Recovery Agent solving this exact problem, with
+guardrails described the same way this project's architecture works —
+an LLM that drafts, and a deterministic layer that decides. I didn't
+know that when I picked this problem. I think that's the strongest
+evidence the problem is real."*
 
 ---
 
