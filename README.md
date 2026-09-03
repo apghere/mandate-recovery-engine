@@ -354,6 +354,34 @@ as a new evaluation — not a silent drift of the existing one.
 
 ---
 
+## 11. Where this sits next to Razorpay's own direction
+
+Razorpay's own Agent Studio, launched at FTX'26, ships a production **Subscription Recovery
+Agent**: it reads a failed payment's cause, applies retry logic beyond a fixed schedule, and
+escalates to a live voice call (ElevenLabs) when retries aren't enough —
+[Agent Studio launch](https://razorpay.com/blog/agent-studio-ai-agents-by-razorpay/),
+[product page](https://razorpay.com/agent-studio/). MRE was built, and the PRD chosen, before
+that launch and independently of it — but it targets the identical problem Razorpay judged worth
+shipping a named agent for. That's the strongest evidence available that this project's thesis
+wasn't invented for a buildathon: the market case is externally confirmed, not asserted.
+
+The two systems differ in scope, not in philosophy. Razorpay's own description of Agent Studio's
+guardrails — "deterministic mathematical guardrails and SHA-256 cryptographic idempotency locks,"
+agents that can run in a review-first mode where the agent drafts and a human/deterministic layer
+decides before anything executes
+([guardrails post](https://razorpay.com/blog/razorpay-agent-studio-principles-guardrails-and-merchant-control/))
+— is the same split this codebase makes at a fraction of the scale: the LLM drafts (decline
+classification, notice text), a deterministic validator and policy engine decide, and money
+movement is never something the AI outputs (Section 4, Section 7). MRE has no voice channel, no
+merchant-facing guardrail console, and runs against a simulator rather than Razorpay's real rails
+— it is a research-grade proof of the decision layer (an exact, auditable optimizer under RBI's
+4-attempt/notice constraints), not a competing product. The honest claim is narrower than
+"validated by a billion-dollar company" — it's that the deterministic-guardrail-around-an-LLM
+pattern this project converged on independently is the same pattern Razorpay's own platform team
+is now publicly shipping.
+
+---
+
 *Full engineering history — every bug found, every architectural decision reconsidered, and why —
 is in `CLAUDE.md` (working log), [`docs/ENGINEERING_LOG.md`](docs/ENGINEERING_LOG.md) (the "what
 broke" narrative, pulled out on its own), `docs/ADR/` (numbered decision records), and

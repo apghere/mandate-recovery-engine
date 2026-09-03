@@ -725,3 +725,38 @@ flattering one.
 
 README.md updated with the full P0b writeup in the Evaluation section,
 right after the existing honesty paragraph.
+
+---
+
+Final-stretch review (2026-09-03), re-grounded against the repo as source
+of truth rather than memory: confirmed the working baseline directly
+before touching anything (docs §14 discipline) — `make check` equivalent
+run by hand: 171 passed / 41 skipped, ruff clean, mypy clean on its
+configured scope (`backend/app`, `data`, `simulator`, `scripts`,
+`evaluation` — tests/ is deliberately excluded from strict mode, not a
+gap; running mypy against `tests/` directly does surface ~40 untyped-test
+errors, which is expected and out of scope, not a regression). Repo audit
+found nothing to delete or rename: no stray/junk files, `__pycache__`
+correctly gitignored, `.env` correctly untracked, docs/reports structure
+matches what CLAUDE.md and README already claim. Commit history (37
+commits) already reads as natural, specific, non-robotic — no rewrite
+needed.
+
+Did the one piece of research not yet done: checked Razorpay's actual
+2026 public direction rather than assuming the original Day-1 research
+was still current. Finding, real and load-bearing: Razorpay's own Agent
+Studio (launched at FTX'26) ships a production Subscription Recovery
+Agent solving this exact problem, and its own guardrails post describes
+the identical "LLM drafts, deterministic layer decides" split this
+codebase converged on independently. Written up honestly (narrower claim
+than "validated by Razorpay," scoped to "same architectural pattern, same
+problem class, much smaller and research-grade") as README.md's new
+Section 11 — the highest-value, lowest-effort change available with ~2
+days left, since a judge who knows Agent Studio will otherwise wonder
+whether this was known and left unaddressed.
+
+No other structural changes made. Frontend, benchmark, and Section 8's
+honest "fixed won on the locked test split" finding are left exactly as
+they are — already correct, already investigated, already reported
+straight; re-litigating them now would be spending the remaining time on
+restating conclusions rather than closing anything open.
