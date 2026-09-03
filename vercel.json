@@ -1,0 +1,13 @@
+{
+  "functions": {
+    "api/index.py": {
+      "runtime": "python3.12"
+    }
+  },
+  "rewrites": [
+    { "source": "/dashboard", "destination": "/frontend/index.html" },
+    { "source": "/dashboard/(.*)", "destination": "/frontend/$1" },
+    { "source": "/reports/(.*)", "destination": "/reports/$1" },
+    { "source": "/(.*)", "destination": "/api/index" }
+  ]
+}

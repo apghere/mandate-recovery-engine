@@ -1,0 +1,20 @@
+# Vercel's Python builder reads this file at the repo root (docs/DEPLOY.md).
+# Pinned to exactly what's installed and tested locally (.venv), minus dev
+# tooling (pytest/ruff/mypy) and uvicorn -- Vercel's runtime wraps the ASGI
+# `app` object directly, it doesn't need a server to run one. Kept separate
+# from pyproject.toml's `dependencies` list rather than generated from it,
+# since pyproject's `[tool.setuptools.packages.find] where = ["backend"]`
+# and Vercel's own build both want their own single source of truth in
+# their own convention -- duplicated on purpose, not a drift risk in
+# practice since both are runtime deps, not something that changes often.
+fastapi==0.141.1
+pydantic==2.13.4
+starlette==1.6.0
+psycopg[binary]==3.3.4
+python-dotenv==1.2.3
+httpx==0.28.1
+scikit-learn==1.9.0
+numpy==2.5.2
+matplotlib==3.11.1
+anthropic==1.2.0
+PyYAML==6.0.3
