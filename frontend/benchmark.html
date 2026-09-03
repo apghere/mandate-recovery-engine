@@ -4,35 +4,47 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>MRE — Benchmark</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%232f3d76'/%3E%3Ctext x='16' y='22' font-family='Georgia,serif' font-size='16' fill='%23f6f3ec' text-anchor='middle'%3E4%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="theme-config.js"></script>
 <script src="shared.js"></script>
+<style>
+  body { font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; }
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+</style>
 </head>
-<body class="bg-slate-50 text-slate-900 min-h-screen">
+<body class="bg-paper text-ink min-h-screen">
 
-<header class="border-b border-slate-200 bg-white">
+<header class="border-b border-line bg-surface sticky top-0 z-10">
   <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-    <div>
-      <div class="font-semibold text-lg">Mandate Recovery Engine</div>
-      <div class="text-xs text-slate-500">Phase 8 — the rigorous paired benchmark</div>
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-md bg-accent text-paper flex items-center justify-center font-mono font-semibold text-sm shrink-0">4</div>
+      <div>
+        <div class="font-semibold text-base leading-tight">Mandate Recovery Engine</div>
+        <div class="text-xs text-muted leading-tight">The rigorous paired benchmark</div>
+      </div>
     </div>
-    <nav class="flex gap-4 text-sm font-medium">
-      <a href="index.html" class="text-slate-500 hover:text-slate-900 pb-1">Case detail</a>
-      <a href="benchmark.html" class="text-slate-900 border-b-2 border-slate-900 pb-1">Benchmark</a>
-      <a href="audit.html" class="text-slate-500 hover:text-slate-900 pb-1">Audit &amp; kill switch</a>
+    <nav class="flex gap-1 text-sm font-medium">
+      <a href="index.html" class="px-3 py-1.5 rounded-md text-muted hover:bg-stone-100 hover:text-ink">Case detail</a>
+      <a href="benchmark.html" class="px-3 py-1.5 rounded-md bg-accent text-paper">Benchmark</a>
+      <a href="audit.html" class="px-3 py-1.5 rounded-md text-muted hover:bg-stone-100 hover:text-ink">Audit &amp; kill switch</a>
     </nav>
   </div>
 </header>
 
 <main class="max-w-5xl mx-auto px-4 py-6 space-y-6">
 
-  <div id="honesty" class="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-900"></div>
+  <div id="honesty" class="rounded-lg p-4 text-sm border"></div>
 
-  <div class="bg-white border border-slate-200 rounded-lg p-6">
-    <div class="flex items-center justify-between mb-3">
-      <h2 class="font-semibold">Summary — <span id="meta"></span></h2>
+  <div class="bg-surface border border-line rounded-lg p-6">
+    <div class="flex items-center justify-between mb-4">
+      <h2 class="font-semibold">Summary <span id="meta" class="text-muted font-normal text-sm"></span></h2>
     </div>
     <table class="w-full text-sm">
-      <thead><tr class="text-left text-slate-500 text-xs">
+      <thead><tr class="text-left text-muted text-xs uppercase tracking-wide">
         <th class="pb-2">policy</th><th class="pb-2">recovered</th><th class="pb-2">rate</th>
         <th class="pb-2">rupees recovered</th><th class="pb-2">attempts used</th>
       </tr></thead>
@@ -40,76 +52,92 @@
     </table>
   </div>
 
-  <div class="bg-white border border-slate-200 rounded-lg p-6">
-    <h2 class="font-semibold mb-3">Paired bootstrap 95% CI — mean per-payer rupee gap (A − B)</h2>
+  <div class="bg-surface border border-line rounded-lg p-6">
+    <h2 class="font-semibold mb-3">Paired bootstrap 95% CI <span class="text-muted font-normal text-sm">— mean per-payer rupee gap (A − B)</span></h2>
     <table class="w-full text-sm">
-      <thead><tr class="text-left text-slate-500 text-xs">
+      <thead><tr class="text-left text-muted text-xs uppercase tracking-wide">
         <th class="pb-2">A</th><th class="pb-2">B</th><th class="pb-2">mean gap</th>
         <th class="pb-2">95% CI</th><th class="pb-2">significant</th>
       </tr></thead>
       <tbody id="comparisons-body"></tbody>
     </table>
-    <p class="text-xs text-slate-500 mt-3">
+    <p class="text-xs text-muted mt-3 leading-relaxed">
       Same realised world across policies (shared payer/moment/attempt-number RNG seed),
       nonparametric bootstrap over per-payer differences. "Significant" means the 95% CI
       excludes zero.
     </p>
   </div>
 
-  <div class="bg-white border border-slate-200 rounded-lg p-6">
+  <div class="bg-surface border border-line rounded-lg p-6">
     <h2 class="font-semibold mb-3">Success-model calibration</h2>
     <img src="/reports/calibration.png" alt="Calibration reliability diagram"
-         class="max-w-full rounded border border-slate-200" />
+         class="max-w-full rounded border border-line" />
   </div>
 
 </main>
 
 <script>
+function barRow(value, max) {
+  const pct = max > 0 ? Math.max(2, (value / max) * 100) : 0;
+  return `<div class="w-28 h-2 rounded-full bg-stone-100 overflow-hidden inline-block align-middle mr-2">
+    <div class="h-full bg-accent rounded-full" style="width:${pct.toFixed(0)}%"></div>
+  </div>`;
+}
+
 async function load() {
   let report;
   try {
     report = await apiGet("/reports/benchmark.json");
   } catch (e) {
     document.getElementById("meta").textContent = "no report yet";
+    document.getElementById("honesty").className = "rounded-lg p-4 text-sm border bg-amber-50 border-amber-200 text-amber-900";
     document.getElementById("honesty").innerHTML =
-      "No reports/benchmark.json found. Run <code>make bench</code> " +
-      "(or <code>python -m evaluation.runner --split test --sensitivity</code> " +
+      "No reports/benchmark.json found. Run <code class=\"font-mono bg-white/60 px-1 rounded\">make bench</code> " +
+      "(or <code class=\"font-mono bg-white/60 px-1 rounded\">python -m evaluation.runner --split test --sensitivity</code> " +
       "for the final locked run) to generate one.";
     return;
   }
 
   document.getElementById("meta").textContent =
-    `split=${report.split}, n=${report.n_mandates}, bootstrap resamples=${report.n_boot}`;
+    `— split=${report.split}, n=${report.n_mandates}, bootstrap resamples=${report.n_boot}`;
 
+  const maxRupees = Math.max(...report.summary.map(r => Number(r.rupees_recovered)));
   document.getElementById("summary-body").innerHTML = report.summary.map(r => `
-    <tr class="border-t border-slate-100">
-      <td class="py-1.5 pr-3 font-medium">${r.policy}</td>
-      <td class="py-1.5 pr-3">${r.recovered}</td>
-      <td class="py-1.5 pr-3">${(100 * r.recovery_rate).toFixed(1)}%</td>
-      <td class="py-1.5 pr-3">${fmtRupees(r.rupees_recovered)}</td>
-      <td class="py-1.5">${r.attempts_used}</td>
+    <tr class="border-t border-line">
+      <td class="py-2 pr-3 font-medium font-mono">${r.policy}</td>
+      <td class="py-2 pr-3 tabular-nums">${r.recovered}</td>
+      <td class="py-2 pr-3 tabular-nums">${(100 * r.recovery_rate).toFixed(1)}%</td>
+      <td class="py-2 pr-3 tabular-nums whitespace-nowrap">${barRow(Number(r.rupees_recovered), maxRupees)}${fmtRupees(r.rupees_recovered)}</td>
+      <td class="py-2 tabular-nums">${r.attempts_used}</td>
     </tr>`).join("");
 
   document.getElementById("comparisons-body").innerHTML = report.paired_comparisons.map(r => `
-    <tr class="border-t border-slate-100">
-      <td class="py-1.5 pr-3 font-medium">${r.a}</td>
-      <td class="py-1.5 pr-3">${r.b}</td>
-      <td class="py-1.5 pr-3">${fmtRupees(r.mean_gap_rupees_per_payer)}</td>
-      <td class="py-1.5 pr-3">[${fmtRupees(r.ci_lo)}, ${fmtRupees(r.ci_hi)}]</td>
-      <td class="py-1.5 ${r.significant ? 'text-emerald-700 font-medium' : 'text-slate-400'}">${r.significant ? "yes" : "no"}</td>
+    <tr class="border-t border-line">
+      <td class="py-2 pr-3 font-medium font-mono">${r.a}</td>
+      <td class="py-2 pr-3 font-mono">${r.b}</td>
+      <td class="py-2 pr-3 tabular-nums">${fmtRupees(r.mean_gap_rupees_per_payer)}</td>
+      <td class="py-2 pr-3 tabular-nums text-muted">[${fmtRupees(r.ci_lo)}, ${fmtRupees(r.ci_hi)}]</td>
+      <td class="py-2 ${r.significant ? 'text-emerald-700 font-medium' : 'text-muted'}">${r.significant ? "✓ yes" : "no"}</td>
     </tr>`).join("");
 
   const fixedWins = report.paired_comparisons.some(
     r => r.a === "fixed" && r.significant && r.mean_gap_rupees_per_payer > 0
   );
-  document.getElementById("honesty").innerHTML = fixedWins
-    ? `<strong>Honesty note:</strong> on this locked run, the naive fixed-schedule baseline
+  const honesty = document.getElementById("honesty");
+  if (fixedWins) {
+    honesty.className = "rounded-lg p-4 text-sm border bg-amber-50 border-amber-200 text-amber-900";
+    honesty.innerHTML =
+      `<strong>Honesty note:</strong> on this locked run, the naive fixed-schedule baseline
        recovered <em>more</em> gross rupees than MRE, greedy, and even the perfect-information
        oracle — not the hoped-for direction, reported as measured. See CLAUDE.md's Phase 8 notes
        and README §Evaluation for the investigation of why (the DP prices a revocation/opt-out
-       hazard cost this benchmark's single-cycle metric can't observe the benefit of).`
-    : `<strong>Honesty note:</strong> whatever the numbers above say, they are the numbers
-       (docs §I.15) — see README §Evaluation for the full methodology and its limitations.`;
+       hazard cost this benchmark's single-cycle metric can't observe the benefit of).`;
+  } else {
+    honesty.className = "rounded-lg p-4 text-sm border bg-stone-100 border-line text-ink";
+    honesty.innerHTML =
+      `<strong>Honesty note:</strong> whatever the numbers above say, they are the numbers —
+       see README §Evaluation for the full methodology and its limitations.`;
+  }
 }
 load();
 </script>

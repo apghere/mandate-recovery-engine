@@ -4,60 +4,75 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>MRE — Audit</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%232f3d76'/%3E%3Ctext x='16' y='22' font-family='Georgia,serif' font-size='16' fill='%23f6f3ec' text-anchor='middle'%3E4%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="theme-config.js"></script>
 <script src="shared.js"></script>
+<style>
+  body { font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; }
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+</style>
 </head>
-<body class="bg-slate-50 text-slate-900 min-h-screen">
+<body class="bg-paper text-ink min-h-screen">
 
-<header class="border-b border-slate-200 bg-white">
+<header class="border-b border-line bg-surface sticky top-0 z-10">
   <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-    <div>
-      <div class="font-semibold text-lg">Mandate Recovery Engine</div>
-      <div class="text-xs text-slate-500">Tamper-evident audit ledger &amp; kill switch</div>
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-md bg-accent text-paper flex items-center justify-center font-mono font-semibold text-sm shrink-0">4</div>
+      <div>
+        <div class="font-semibold text-base leading-tight">Mandate Recovery Engine</div>
+        <div class="text-xs text-muted leading-tight">Tamper-evident audit ledger &amp; kill switch</div>
+      </div>
     </div>
-    <nav class="flex gap-4 text-sm font-medium">
-      <a href="index.html" class="text-slate-500 hover:text-slate-900 pb-1">Case detail</a>
-      <a href="benchmark.html" class="text-slate-500 hover:text-slate-900 pb-1">Benchmark</a>
-      <a href="audit.html" class="text-slate-900 border-b-2 border-slate-900 pb-1">Audit &amp; kill switch</a>
+    <nav class="flex gap-1 text-sm font-medium">
+      <a href="index.html" class="px-3 py-1.5 rounded-md text-muted hover:bg-stone-100 hover:text-ink">Case detail</a>
+      <a href="benchmark.html" class="px-3 py-1.5 rounded-md text-muted hover:bg-stone-100 hover:text-ink">Benchmark</a>
+      <a href="audit.html" class="px-3 py-1.5 rounded-md bg-accent text-paper">Audit &amp; kill switch</a>
     </nav>
   </div>
 </header>
 
 <main class="max-w-5xl mx-auto px-4 py-6 space-y-6">
 
-  <div id="chain-status" class="rounded-lg p-4 border text-sm font-medium"></div>
+  <div id="chain-status" class="rounded-lg p-4 border text-sm font-medium flex items-center gap-2"></div>
 
-  <div class="bg-white border border-slate-200 rounded-lg p-6">
-    <h2 class="font-semibold mb-3">Kill switches</h2>
+  <div class="bg-surface border border-line rounded-lg p-6">
+    <h2 class="font-semibold mb-1">Kill switches</h2>
+    <p class="text-xs text-muted mb-4">A switch can only block a policy from acting — never grant one it wasn't already authorised for.</p>
     <div class="flex flex-wrap items-end gap-3 mb-4">
       <div>
-        <label class="block text-xs text-slate-500 mb-1">Scope</label>
-        <input id="scope-input" value="global" class="border border-slate-300 rounded px-2 py-1 text-sm w-56" />
-        <div class="text-xs text-slate-400 mt-1">"global" or "merchant:&lt;merchant_id&gt;"</div>
+        <label class="block text-xs text-muted uppercase tracking-wide mb-1">Scope</label>
+        <input id="scope-input" value="global" class="border border-line rounded px-2 py-1.5 text-sm w-56 font-mono bg-paper" />
+        <div class="text-xs text-muted mt-1">"global" or "merchant:&lt;merchant_id&gt;"</div>
       </div>
       <div>
-        <label class="block text-xs text-slate-500 mb-1">Operator</label>
-        <input id="operator-input" value="dashboard-operator" class="border border-slate-300 rounded px-2 py-1 text-sm w-48" />
+        <label class="block text-xs text-muted uppercase tracking-wide mb-1">Operator</label>
+        <input id="operator-input" value="dashboard-operator" class="border border-line rounded px-2 py-1.5 text-sm w-48 bg-paper" />
       </div>
-      <button id="activate-btn" class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium px-3 py-1.5 rounded">
+      <button id="activate-btn" class="bg-rose-600 hover:bg-rose-700 text-white text-sm font-medium px-3 py-1.5 rounded-md transition-colors">
         Activate kill switch
       </button>
-      <button id="deactivate-btn" class="bg-slate-200 hover:bg-slate-300 text-slate-700 text-sm font-medium px-3 py-1.5 rounded">
+      <button id="deactivate-btn" class="bg-stone-200 hover:bg-stone-300 text-stone-700 text-sm font-medium px-3 py-1.5 rounded-md transition-colors">
         Deactivate
       </button>
     </div>
     <div id="switches-list" class="text-sm"></div>
   </div>
 
-  <div class="bg-white border border-slate-200 rounded-lg p-6">
+  <div class="bg-surface border border-line rounded-lg p-6">
     <h2 class="font-semibold mb-3">Recent audit entries</h2>
-    <table class="w-full text-sm">
-      <thead><tr class="text-left text-slate-500 text-xs">
-        <th class="pb-2">when</th><th class="pb-2">actor</th><th class="pb-2">cycle</th>
-        <th class="pb-2">action</th><th class="pb-2">hash</th>
-      </tr></thead>
-      <tbody id="audit-body"></tbody>
-    </table>
+    <div class="overflow-x-auto">
+      <table class="w-full text-sm">
+        <thead><tr class="text-left text-muted text-xs uppercase tracking-wide">
+          <th class="pb-2">when</th><th class="pb-2">actor</th><th class="pb-2">cycle</th>
+          <th class="pb-2">action</th><th class="pb-2">hash</th>
+        </tr></thead>
+        <tbody id="audit-body"></tbody>
+      </table>
+    </div>
   </div>
 
 </main>
@@ -68,30 +83,32 @@ async function refreshAudit() {
 
   const statusDiv = document.getElementById("chain-status");
   if (data.chain_valid) {
-    statusDiv.className = "rounded-lg p-4 border text-sm font-medium bg-emerald-50 border-emerald-200 text-emerald-800";
-    statusDiv.textContent = "✓ Audit chain valid — every entry's hash matches its own content plus the previous entry's hash.";
+    statusDiv.className = "rounded-lg p-4 border text-sm font-medium flex items-center gap-2 bg-emerald-50 border-emerald-200 text-emerald-800";
+    statusDiv.innerHTML = `<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-emerald-600 text-white text-xs shrink-0">✓</span>
+      Audit chain valid — every entry's hash matches its own content plus the previous entry's hash.`;
   } else {
-    statusDiv.className = "rounded-lg p-4 border text-sm font-medium bg-rose-50 border-rose-200 text-rose-800";
-    statusDiv.textContent = `✗ Audit chain BROKEN at row id ${data.chain_broken_at_id} — tamper detected or the row was edited outside the app.`;
+    statusDiv.className = "rounded-lg p-4 border text-sm font-medium flex items-center gap-2 bg-rose-50 border-rose-200 text-rose-800";
+    statusDiv.innerHTML = `<span class="inline-flex items-center justify-center w-5 h-5 rounded-full bg-rose-600 text-white text-xs shrink-0">✗</span>
+      Audit chain BROKEN at row id ${data.chain_broken_at_id} — tamper detected or the row was edited outside the app.`;
   }
 
   const switches = document.getElementById("switches-list");
   switches.innerHTML = data.active_kill_switches.length
     ? data.active_kill_switches.map(s => `
-        <div class="flex items-center gap-2 py-1">
-          <span class="inline-block w-2 h-2 rounded-full bg-rose-500"></span>
-          <span class="font-medium">${s.scope}</span>
-          <span class="text-slate-400 text-xs">set by ${s.set_by} at ${fmtDateTime(s.set_at)}</span>
+        <div class="flex items-center gap-2 py-1.5">
+          <span class="inline-block w-2 h-2 rounded-full bg-rose-500 shrink-0"></span>
+          <span class="font-mono font-medium">${s.scope}</span>
+          <span class="text-muted text-xs">set by ${s.set_by} at ${fmtDateTime(s.set_at)}</span>
         </div>`).join("")
-    : `<div class="text-slate-500">No kill switches active — the system is live.</div>`;
+    : `<div class="text-muted flex items-center gap-2"><span class="inline-block w-2 h-2 rounded-full bg-emerald-500 shrink-0"></span>No kill switches active — the system is live.</div>`;
 
   document.getElementById("audit-body").innerHTML = data.recent_entries.map(a => `
-    <tr class="border-t border-slate-100">
-      <td class="py-1.5 pr-3 whitespace-nowrap">${fmtDateTime(a.at)}</td>
-      <td class="py-1.5 pr-3">${a.actor}</td>
-      <td class="py-1.5 pr-3 font-mono text-xs">${a.cycle_id ?? "—"}</td>
-      <td class="py-1.5 pr-3">${a.action}</td>
-      <td class="py-1.5 font-mono text-xs text-slate-400" title="${a.hash}">${a.hash.slice(0, 10)}…</td>
+    <tr class="border-t border-line">
+      <td class="py-2 pr-3 whitespace-nowrap font-mono text-xs text-muted">${fmtDateTime(a.at)}</td>
+      <td class="py-2 pr-3">${a.actor}</td>
+      <td class="py-2 pr-3 font-mono text-xs">${a.cycle_id ?? "—"}</td>
+      <td class="py-2 pr-3">${a.action}</td>
+      <td class="py-2 font-mono text-xs text-muted" title="${a.hash}">${a.hash.slice(0, 10)}…</td>
     </tr>`).join("");
 }
 

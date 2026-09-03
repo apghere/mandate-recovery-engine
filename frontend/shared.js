@@ -4,9 +4,9 @@
 // "no separate materialized view, no caching layer").
 
 const STATE_COLORS = {
-  DUE: "bg-slate-200 text-slate-700",
-  DIAGNOSING: "bg-slate-200 text-slate-700",
-  PLANNING: "bg-slate-200 text-slate-700",
+  DUE: "bg-stone-100 text-stone-600",
+  DIAGNOSING: "bg-stone-100 text-stone-600",
+  PLANNING: "bg-stone-100 text-stone-600",
   SCHEDULED: "bg-amber-100 text-amber-800",
   EXECUTING: "bg-amber-100 text-amber-800",
   ESCALATING: "bg-orange-100 text-orange-800",
@@ -15,9 +15,38 @@ const STATE_COLORS = {
   ABANDONED: "bg-rose-100 text-rose-800",
 };
 
+// A small dot, not just color, in front of the label -- state should be
+// legible even to someone who can't distinguish the hues (docs' own
+// "communicate the intelligence of the system" demo principle extends to
+// not making that communication color-vision-dependent).
+const STATE_DOTS = {
+  DUE: "bg-stone-400", DIAGNOSING: "bg-stone-400", PLANNING: "bg-stone-400",
+  SCHEDULED: "bg-amber-500", EXECUTING: "bg-amber-500",
+  ESCALATING: "bg-orange-500", AWAITING_MANUAL: "bg-orange-500",
+  RECOVERED: "bg-emerald-500", ABANDONED: "bg-rose-500",
+};
+
 function stateBadge(state) {
-  const cls = STATE_COLORS[state] || "bg-slate-200 text-slate-700";
-  return `<span class="inline-block px-2 py-0.5 rounded text-xs font-medium ${cls}">${state}</span>`;
+  const cls = STATE_COLORS[state] || "bg-stone-100 text-stone-600";
+  const dot = STATE_DOTS[state] || "bg-stone-400";
+  return `<span class="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full text-xs font-medium ${cls}">
+    <span class="w-1.5 h-1.5 rounded-full ${dot}"></span>${state}</span>`;
+}
+
+// A compact horizontal probability bar -- p_success as a shape, not just
+// a number, so a row of slots is scannable at a glance rather than
+// requiring the reader to parse four decimals.
+function probBar(p) {
+  if (p === null || p === undefined) return "";
+  const pct = Math.max(0, Math.min(1, Number(p))) * 100;
+  const tone = pct >= 60 ? "bg-emerald-500" : pct >= 30 ? "bg-amber-500" : "bg-rose-500";
+  return `
+    <span class="inline-flex items-center gap-1.5 align-middle">
+      <span class="w-12 h-1.5 rounded-full bg-stone-200 overflow-hidden">
+        <span class="block h-full ${tone} rounded-full" style="width:${pct.toFixed(0)}%"></span>
+      </span>
+      <span class="font-mono text-xs text-muted tabular-nums">${(pct).toFixed(0)}%</span>
+    </span>`;
 }
 
 function fmtRupees(n) {

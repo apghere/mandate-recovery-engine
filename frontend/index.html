@@ -4,39 +4,52 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>MRE — Case Detail</title>
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%232f3d76'/%3E%3Ctext x='16' y='22' font-family='Georgia,serif' font-size='16' fill='%23f6f3ec' text-anchor='middle'%3E4%3C/text%3E%3C/svg%3E" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
 <script src="https://cdn.tailwindcss.com"></script>
+<script src="theme-config.js"></script>
 <script src="shared.js"></script>
 <style>
-  body { font-family: ui-sans-serif, system-ui, -apple-system, sans-serif; }
+  body { font-family: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif; }
+  .tabular-nums { font-variant-numeric: tabular-nums; }
+  .timeline-item { position: relative; }
   .timeline-item::before {
-    content: ""; position: absolute; left: -1.05rem; top: 0.35rem;
-    width: 0.6rem; height: 0.6rem; border-radius: 9999px; background: currentColor;
+    content: ""; position: absolute; left: -1.05rem; top: 0.4rem;
+    width: 0.55rem; height: 0.55rem; border-radius: 9999px; background: currentColor;
+    box-shadow: 0 0 0 3px var(--ring, #fff);
   }
+  .case-row[aria-current="true"] { background: #eceff7; border-color: #2f3d76; }
+  ::selection { background: #2f3d76; color: #fff; }
 </style>
 </head>
-<body class="bg-slate-50 text-slate-900 min-h-screen">
+<body class="bg-paper text-ink min-h-screen">
 
-<header class="border-b border-slate-200 bg-white">
+<header class="border-b border-line bg-surface sticky top-0 z-10">
   <div class="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-    <div>
-      <div class="font-semibold text-lg">Mandate Recovery Engine</div>
-      <div class="text-xs text-slate-500">"You get four attempts. Spend them well."</div>
+    <div class="flex items-center gap-3">
+      <div class="w-8 h-8 rounded-md bg-accent text-paper flex items-center justify-center font-mono font-semibold text-sm shrink-0">4</div>
+      <div>
+        <div class="font-semibold text-base leading-tight">Mandate Recovery Engine</div>
+        <div class="text-xs text-muted leading-tight">"You get four attempts. Spend them well."</div>
+      </div>
     </div>
-    <nav class="flex gap-4 text-sm font-medium">
-      <a href="index.html" class="text-slate-900 border-b-2 border-slate-900 pb-1">Case detail</a>
-      <a href="benchmark.html" class="text-slate-500 hover:text-slate-900 pb-1">Benchmark</a>
-      <a href="audit.html" class="text-slate-500 hover:text-slate-900 pb-1">Audit &amp; kill switch</a>
+    <nav class="flex gap-1 text-sm font-medium">
+      <a href="index.html" class="px-3 py-1.5 rounded-md bg-accent text-paper">Case detail</a>
+      <a href="benchmark.html" class="px-3 py-1.5 rounded-md text-muted hover:bg-stone-100 hover:text-ink">Benchmark</a>
+      <a href="audit.html" class="px-3 py-1.5 rounded-md text-muted hover:bg-stone-100 hover:text-ink">Audit &amp; kill switch</a>
     </nav>
   </div>
 </header>
 
-<main class="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-[320px_1fr] gap-6">
+<main class="max-w-7xl mx-auto px-4 py-6 grid grid-cols-1 lg:grid-cols-[300px_1fr] gap-6">
 
   <!-- Case list -->
-  <aside class="bg-white border border-slate-200 rounded-lg p-4 h-fit">
+  <aside class="bg-surface border border-line rounded-lg p-4 h-fit lg:sticky lg:top-20">
     <div class="flex items-center justify-between mb-3">
-      <h2 class="font-semibold">Cases</h2>
-      <select id="state-filter" class="text-xs border border-slate-300 rounded px-1.5 py-1">
+      <h2 class="font-semibold text-sm uppercase tracking-wide text-muted">Cases</h2>
+      <select id="state-filter" class="text-xs border border-line rounded px-1.5 py-1 bg-paper">
         <option value="">all states</option>
         <option value="SCHEDULED">SCHEDULED</option>
         <option value="EXECUTING">EXECUTING</option>
@@ -45,17 +58,18 @@
         <option value="ABANDONED">ABANDONED</option>
       </select>
     </div>
-    <div id="case-list" class="space-y-1 max-h-[70vh] overflow-y-auto text-sm"></div>
-    <div id="case-list-empty" class="text-sm text-slate-500 hidden">
-      No cases yet. Run <code class="bg-slate-100 px-1 rounded">make replay-fixed</code> or
-      POST to <code class="bg-slate-100 px-1 rounded">/events</code> to create some.
+    <div id="case-list" class="space-y-1 max-h-[70vh] overflow-y-auto text-sm -mx-1 px-1"></div>
+    <div id="case-list-empty" class="text-sm text-muted hidden">
+      No cases yet. Run <code class="bg-stone-100 px-1 rounded font-mono text-xs">make replay-fixed</code> or
+      POST to <code class="bg-stone-100 px-1 rounded font-mono text-xs">/events</code> to create some.
     </div>
   </aside>
 
   <!-- Case detail -->
   <section id="detail" class="space-y-4">
-    <div class="bg-white border border-slate-200 rounded-lg p-6 text-slate-500 text-sm">
-      Select a case on the left to see its plan timeline, each slot's probability,
+    <div class="bg-surface border border-line rounded-lg p-10 text-muted text-sm text-center">
+      <div class="text-3xl mb-2">←</div>
+      Select a case on the left to see its plan timeline, each slot's recovery probability,
       denied actions with reason codes, and the fixed-schedule counterfactual.
     </div>
   </section>
@@ -75,122 +89,157 @@ async function loadCaseList() {
   list.innerHTML = "";
   empty.classList.toggle("hidden", data.cases.length > 0);
   for (const c of data.cases) {
+    const isDemo = c.id.startsWith("CYC-0-");
     const row = el(`
-      <button class="w-full text-left px-2 py-2 rounded hover:bg-slate-100 flex items-center justify-between gap-2" data-id="${c.id}">
-        <span class="truncate">
-          <div class="font-medium truncate">${c.id}</div>
-          <div class="text-xs text-slate-500">${fmtRupees(c.amount)} · ${c.merchant_id}</div>
-        </span>
-        ${stateBadge(c.state)}
+      <button class="case-row w-full text-left px-2.5 py-2 rounded-md border border-transparent hover:bg-stone-50 flex flex-col gap-1.5" data-id="${c.id}">
+        <div class="flex items-center justify-between gap-2">
+          <div class="font-mono text-[13px] truncate">${c.id}</div>
+          ${isDemo ? '<span class="text-[10px] font-sans font-semibold text-accent bg-accent-soft px-1 rounded shrink-0">demo</span>' : ""}
+        </div>
+        <div class="flex items-center justify-between gap-2">
+          <div class="text-xs text-muted truncate">${fmtRupees(c.amount)} · ${c.merchant_id}</div>
+          <div class="shrink-0">${stateBadge(c.state)}</div>
+        </div>
       </button>
     `);
-    row.addEventListener("click", () => loadCaseDetail(c.id));
+    row.addEventListener("click", () => loadCaseDetail(c.id, row));
     list.appendChild(row);
   }
 }
 
-function renderTimeline(steps, title) {
-  if (!steps.length) return `<div class="text-sm text-slate-500">${title}: none.</div>`;
+const STEP_ICON = { attempt: "→", notify: "✉" };
+
+function renderTimeline(steps, accentClass) {
+  if (!steps.length) return `<div class="text-sm text-muted py-2">No steps.</div>`;
   const items = steps.map(s => {
-    const p = (s.p_success ?? null) !== null ? `p=${Number(s.p_success).toFixed(2)}` : "";
     const status = s.status ? stateBadge(s.status.toUpperCase()) : "";
-    const cancelled = s.cancelled_reason ? `<div class="text-xs text-rose-600">denied: ${s.cancelled_reason}</div>` : "";
-    const color = s.step_type === "attempt" ? "text-indigo-600" : "text-slate-400";
+    const cancelled = s.cancelled_reason
+      ? `<div class="text-xs text-rose-700 mt-0.5">✗ denied — ${s.cancelled_reason}</div>` : "";
     return `
-      <li class="timeline-item relative pl-4 ${color} pb-3">
-        <div class="text-slate-900 text-sm font-medium">${s.step_type.toUpperCase()} — ${fmtDateTime(s.scheduled_for)}</div>
-        <div class="text-xs text-slate-500">${p} ${status}</div>
+      <li class="timeline-item pl-4 ${accentClass} pb-4">
+        <div class="text-ink text-sm font-medium flex items-center gap-1.5">
+          <span class="font-mono text-xs">${STEP_ICON[s.step_type] || "•"}</span>
+          ${s.step_type.toUpperCase()} <span class="text-muted font-normal">— ${fmtDateTime(s.scheduled_for)}</span>
+        </div>
+        <div class="mt-1 flex items-center gap-2">${probBar(s.p_success)}${status}</div>
         ${cancelled}
       </li>`;
   }).join("");
-  return `
-    <div>
-      <div class="text-sm font-semibold mb-2">${title}</div>
-      <ul class="border-l border-slate-200 ml-1">${items}</ul>
-    </div>`;
+  return `<ul class="border-l-2 border-line ml-1">${items}</ul>`;
 }
 
 function renderDenied(decisions) {
   const denied = decisions.filter(d => d.verdict === "deny");
-  if (!denied.length) return `<div class="text-sm text-slate-500">No denied actions.</div>`;
+  if (!denied.length) return `<div class="text-sm text-muted">No denied actions — every scheduled action was authorised as planned.</div>`;
   const rows = denied.map(d => `
-    <tr class="border-t border-slate-100">
-      <td class="py-1 pr-3">${fmtDateTime(d.at)}</td>
-      <td class="py-1 pr-3">${d.action}</td>
-      <td class="py-1 text-rose-600 font-medium">${d.reason_code}</td>
+    <tr class="border-t border-line">
+      <td class="py-1.5 pr-3 text-muted">${fmtDateTime(d.at)}</td>
+      <td class="py-1.5 pr-3">${d.action}</td>
+      <td class="py-1.5 text-rose-700 font-medium">${d.reason_code}</td>
     </tr>`).join("");
   return `
     <table class="w-full text-sm">
-      <thead><tr class="text-left text-slate-500 text-xs"><th class="pb-1">when</th><th class="pb-1">action</th><th class="pb-1">reason</th></tr></thead>
+      <thead><tr class="text-left text-muted text-xs uppercase tracking-wide"><th class="pb-1.5">when</th><th class="pb-1.5">action</th><th class="pb-1.5">reason</th></tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
 }
 
 function renderAttempts(attempts) {
-  if (!attempts.length) return `<div class="text-sm text-slate-500">No attempts yet.</div>`;
+  if (!attempts.length) return `<div class="text-sm text-muted">No attempts yet.</div>`;
   const rows = attempts.map(a => `
-    <tr class="border-t border-slate-100">
-      <td class="py-1 pr-3">#${a.sequence_no}</td>
-      <td class="py-1 pr-3">${a.outcome ?? "pending"}</td>
-      <td class="py-1 pr-3">${a.canonical_cause ?? "—"}</td>
-      <td class="py-1 pr-3">${a.cause_confidence != null ? Number(a.cause_confidence).toFixed(2) : "—"}</td>
-      <td class="py-1 pr-3 text-xs text-slate-500">${a.cause_source ?? "—"}</td>
-      <td class="py-1 text-xs text-slate-500">${a.raw_reason ?? ""}</td>
+    <tr class="border-t border-line">
+      <td class="py-1.5 pr-3 font-mono text-xs">#${a.sequence_no}</td>
+      <td class="py-1.5 pr-3">${a.outcome ?? "pending"}</td>
+      <td class="py-1.5 pr-3">${a.canonical_cause ?? "—"}</td>
+      <td class="py-1.5 pr-3 font-mono text-xs tabular-nums">${a.cause_confidence != null ? Number(a.cause_confidence).toFixed(2) : "—"}</td>
+      <td class="py-1.5 pr-3 text-xs text-muted">${a.cause_source ?? "—"}</td>
+      <td class="py-1.5 text-xs text-muted truncate max-w-xs" title="${a.raw_reason ?? ""}">${a.raw_reason ?? ""}</td>
     </tr>`).join("");
   return `
     <table class="w-full text-sm">
-      <thead><tr class="text-left text-slate-500 text-xs">
-        <th class="pb-1">seq</th><th class="pb-1">outcome</th><th class="pb-1">cause</th>
-        <th class="pb-1">conf.</th><th class="pb-1">source</th><th class="pb-1">raw reason</th>
+      <thead><tr class="text-left text-muted text-xs uppercase tracking-wide">
+        <th class="pb-1.5">seq</th><th class="pb-1.5">outcome</th><th class="pb-1.5">cause</th>
+        <th class="pb-1.5">conf.</th><th class="pb-1.5">source</th><th class="pb-1.5">raw reason</th>
       </tr></thead>
       <tbody>${rows}</tbody>
     </table>`;
 }
 
-async function loadCaseDetail(cycleId) {
+function countSteps(steps) {
+  const attempts = steps.filter(s => s.step_type === "attempt").length;
+  const notices = steps.filter(s => s.step_type === "notify").length;
+  return { attempts, notices };
+}
+
+async function loadCaseDetail(cycleId, rowEl) {
+  document.querySelectorAll(".case-row").forEach(r => r.removeAttribute("aria-current"));
+  if (rowEl) rowEl.setAttribute("aria-current", "true");
+
   const data = await apiGet(`/cases/${encodeURIComponent(cycleId)}`);
   const c = data.cycle;
   const detail = document.getElementById("detail");
+
+  const mre = countSteps(data.plan_steps);
+  const fx = countSteps(data.fixed_schedule_counterfactual);
+  const attemptDelta = mre.attempts - fx.attempts;
+  const deltaLine = attemptDelta === 0
+    ? "Same attempt count as the blind fixed schedule — the timing and stopping decisions are where this policy earns its keep, not the budget it spends."
+    : `${Math.abs(attemptDelta)} ${Math.abs(attemptDelta) === 1 ? "attempt" : "attempts"} ${attemptDelta < 0 ? "fewer" : "more"} than a blind fixed schedule would have spent.`;
+
   detail.innerHTML = `
-    <div class="bg-white border border-slate-200 rounded-lg p-6">
-      <div class="flex items-start justify-between">
+    <div class="bg-surface border border-line rounded-lg p-6">
+      <div class="flex items-start justify-between flex-wrap gap-3">
         <div>
-          <h2 class="text-xl font-semibold">${c.id}</h2>
-          <div class="text-sm text-slate-500">${data.mandate.merchant_id} · payer ${data.mandate.payer_id} · ${data.mandate.rail}</div>
+          <h2 class="text-xl font-semibold font-mono">${c.id}</h2>
+          <div class="text-sm text-muted mt-0.5">${data.mandate.merchant_id} · payer ${data.mandate.payer_id} · ${data.mandate.rail}</div>
         </div>
         ${stateBadge(c.state)}
       </div>
-      <div class="grid grid-cols-4 gap-4 mt-4 text-sm">
-        <div><div class="text-slate-500 text-xs">Amount</div>${fmtRupees(c.amount)}</div>
-        <div><div class="text-slate-500 text-xs">Recovered</div>${fmtRupees(c.recovered_amount)}</div>
-        <div><div class="text-slate-500 text-xs">Attempts used</div>${c.attempts_used} / 4</div>
-        <div><div class="text-slate-500 text-xs">Policy</div>${data.plan ? data.plan.model_version : "—"}</div>
+      <div class="grid grid-cols-2 sm:grid-cols-4 gap-4 mt-5 text-sm">
+        <div><div class="text-muted text-xs uppercase tracking-wide mb-0.5">Amount</div><div class="font-mono tabular-nums text-base">${fmtRupees(c.amount)}</div></div>
+        <div><div class="text-muted text-xs uppercase tracking-wide mb-0.5">Recovered</div><div class="font-mono tabular-nums text-base ${Number(c.recovered_amount) > 0 ? 'text-emerald-700' : ''}">${fmtRupees(c.recovered_amount)}</div></div>
+        <div><div class="text-muted text-xs uppercase tracking-wide mb-0.5">Attempts used</div><div class="font-mono tabular-nums text-base">${c.attempts_used} / 4</div></div>
+        <div><div class="text-muted text-xs uppercase tracking-wide mb-0.5">Policy</div><div class="font-mono text-xs mt-1.5">${data.plan ? data.plan.model_version : "—"}</div></div>
       </div>
     </div>
 
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-      <div class="bg-white border border-slate-200 rounded-lg p-6">
-        ${renderTimeline(data.plan_steps, "Actual plan (this policy)")}
+    <div class="bg-surface border border-line rounded-lg overflow-hidden">
+      <div class="px-6 pt-5 pb-3 border-b border-line">
+        <h3 class="font-semibold">What we did vs. a blind fixed schedule</h3>
+        <p class="text-sm text-muted mt-1">${deltaLine}</p>
       </div>
-      <div class="bg-white border border-slate-200 rounded-lg p-6">
-        ${renderTimeline(data.fixed_schedule_counterfactual, "Counterfactual: P0 fixed D+1/D+3/D+7")}
+      <div class="grid grid-cols-1 md:grid-cols-2 divide-y md:divide-y-0 md:divide-x divide-line">
+        <div class="p-6 bg-accent-soft/60">
+          <div class="flex items-center justify-between mb-3">
+            <div class="text-xs uppercase tracking-wide font-semibold text-accent">This policy (MRE)</div>
+            <div class="text-xs font-mono text-muted">${mre.attempts} attempt${mre.attempts === 1 ? "" : "s"} · ${mre.notices} notice${mre.notices === 1 ? "" : "s"}</div>
+          </div>
+          ${renderTimeline(data.plan_steps, "text-accent")}
+        </div>
+        <div class="p-6">
+          <div class="flex items-center justify-between mb-3">
+            <div class="text-xs uppercase tracking-wide font-semibold text-muted">Counterfactual — fixed D+1/D+3/D+7</div>
+            <div class="text-xs font-mono text-muted">${fx.attempts} attempt${fx.attempts === 1 ? "" : "s"} · ${fx.notices} notice${fx.notices === 1 ? "" : "s"}</div>
+          </div>
+          ${renderTimeline(data.fixed_schedule_counterfactual, "text-stone-400")}
+        </div>
       </div>
     </div>
 
-    <div class="bg-white border border-slate-200 rounded-lg p-6">
-      <h3 class="font-semibold mb-2">Denied actions (policy-gate decisions)</h3>
+    <div class="bg-surface border border-line rounded-lg p-6">
+      <h3 class="font-semibold mb-3">Denied actions <span class="text-muted font-normal text-sm">— policy-gate decisions</span></h3>
       ${renderDenied(data.decisions)}
     </div>
 
-    <div class="bg-white border border-slate-200 rounded-lg p-6">
-      <h3 class="font-semibold mb-2">Attempt intents</h3>
+    <div class="bg-surface border border-line rounded-lg p-6">
+      <h3 class="font-semibold mb-3">Attempt intents</h3>
       ${renderAttempts(data.attempt_intents)}
     </div>
 
-    <div class="bg-white border border-slate-200 rounded-lg p-6">
-      <h3 class="font-semibold mb-2">Audit trail</h3>
-      <ul class="text-sm space-y-1">
-        ${data.audit_trail.map(a => `<li><span class="text-slate-500">${fmtDateTime(a.at)}</span> — <span class="font-medium">${a.action}</span> <span class="text-xs text-slate-400">(${a.actor})</span></li>`).join("")}
+    <div class="bg-surface border border-line rounded-lg p-6">
+      <h3 class="font-semibold mb-3">Audit trail</h3>
+      <ul class="text-sm space-y-1.5">
+        ${data.audit_trail.map(a => `<li><span class="text-muted font-mono text-xs">${fmtDateTime(a.at)}</span> — <span class="font-medium">${a.action}</span> <span class="text-xs text-muted">(${a.actor})</span></li>`).join("")}
       </ul>
     </div>
   `;
