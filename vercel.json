@@ -1,14 +1,8 @@
 {
   "functions": {
-    "api/index.py": {
-      "runtime": "python3.12",
-      "maxDuration": 10
+    "index.py": {
+      "maxDuration": 10,
+      "excludeFiles": "{tests/**,docs/**,migrations/**,evaluation/**,.github/**,scripts/**,.hypothesis/**,*.md,CLAUDE.md}"
     }
-  },
-  "rewrites": [
-    { "source": "/dashboard", "destination": "/frontend/index.html" },
-    { "source": "/dashboard/(.*)", "destination": "/frontend/$1" },
-    { "source": "/reports/(.*)", "destination": "/reports/$1" },
-    { "source": "/(.*)", "destination": "/api/index" }
-  ]
+  }
 }

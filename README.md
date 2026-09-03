@@ -8,6 +8,12 @@ real numbers and execute what it decides.
 
 Built for the Razorpay AI Buildathon 2026, Track 03 (AI Revenue Recovery).
 
+**Live demo:** [mandate-recovery-engine.vercel.app/dashboard/index.html](https://mandate-recovery-engine.vercel.app/dashboard/index.html)
+— a read-first browsing surface over a once-seeded demo dataset, not a live
+transactional environment; see [`docs/DEPLOY.md`](docs/DEPLOY.md) for exactly
+what that means and doesn't. The documented `docker compose up` below remains
+the primary, fully-live way to run this.
+
 ---
 
 ## 1. Problem
