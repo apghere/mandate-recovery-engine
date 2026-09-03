@@ -45,8 +45,21 @@ not a replacement.
 - `app/config.py` already reads `DATABASE_URL` from the environment — no
   code change needed to point it at a hosted Postgres instead of the
   local docker-compose one.
+- A user-local Node.js + Vercel CLI, installed to `~/.local/node` (no
+  sudo, doesn't touch system Python/Node) and added to `PATH` via
+  `~/.bashrc` — `vercel --version` should work in any new terminal.
 
 ## What only you can do (needs your account)
+
+### 0. Confirm the CLI is on your PATH
+
+Open a **new** terminal (so it picks up the `~/.bashrc` change) and run:
+
+```bash
+vercel --version   # should print something like "Vercel CLI 59.11.2"
+```
+
+If that prints `command not found`, run `source ~/.bashrc` first.
 
 ### 1. Get a Postgres reachable from the internet
 
