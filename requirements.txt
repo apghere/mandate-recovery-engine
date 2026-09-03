@@ -7,6 +7,16 @@
 # and Vercel's own build both want their own single source of truth in
 # their own convention -- duplicated on purpose, not a drift risk in
 # practice since both are runtime deps, not something that changes often.
+#
+# matplotlib deliberately NOT listed here (pyproject.toml still has it,
+# for scripts/train.py's local use) -- app/ml/calibrate.py was split on
+# 2026-09-03 specifically so the live-serving import chain never reaches
+# app/ml/calibration_plot.py, the only place matplotlib is actually
+# imported. Confirmed empirically, not assumed: `'matplotlib' in
+# sys.modules` is False after importing api/index.py. Free-tier-relevant:
+# smaller function bundle, faster cold start, no benefit given up --
+# reports/calibration.png is a static file the deployed function never
+# regenerates (vercel.json routes /reports/* around it entirely).
 fastapi==0.141.1
 pydantic==2.13.4
 starlette==1.6.0
@@ -15,6 +25,5 @@ python-dotenv==1.2.3
 httpx==0.28.1
 scikit-learn==1.9.0
 numpy==2.5.2
-matplotlib==3.11.1
 anthropic==1.2.0
 PyYAML==6.0.3

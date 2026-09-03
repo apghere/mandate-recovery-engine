@@ -122,23 +122,58 @@ That last command prints the live URL. Open `<url>/dashboard/index.html`
 and click through exactly as you did locally — case list, `CYC-0-HOPELESS`
 detail, `<url>/dashboard/benchmark.html`, `<url>/dashboard/audit.html`.
 
-## Known risks, named rather than discovered live
+## Free-tier fit — analysed against the actual documented limits, not guessed
 
-- **Cold starts are slow-ish.** `app/policies/live.py` retrains the GBM +
-  isotonic calibration from the synthetic corpus on first use per warm
-  container (`make train` takes ~2s locally) — a request that lands on a
-  cold container after idle time will pay that ~2s once, then subsequent
-  requests on the same warm container reuse the cached artifact. Not a
-  bug, just worth knowing before a judge sees a slow first click.
-- **Bundle size.** `scikit-learn` + `numpy` + `matplotlib` (imported
-  because `app/policies/live.py` imports `app/ml/calibrate.py`, which
-  imports `matplotlib` at module scope for its plotting function even
-  though the live path never calls it) add up. Should fit Vercel's
-  Hobby-tier function size limit, but this was never actually deployed
-  and tested end-to-end in this session (no Vercel account available
-  here) — if the first `vercel --prod` fails on function size, the fix is
-  splitting `fit_isotonic` out of `calibrate.py` into a matplotlib-free
-  module; say so and it can be done in a few minutes.
+Checked against current published numbers (2026-09-03), not assumed. Both
+Vercel Hobby and Neon Free are $0, no card required to sign up (Neon
+never asks; Vercel Hobby's own card-on-file, if the flow shows one, is
+for identity/spend-alerting, not billing — Hobby cannot incur charges,
+it throttles or blocks instead). Hobby's terms restrict it to personal,
+non-commercial use — a buildathon/portfolio submission with no paying
+customers and no revenue reads as squarely inside that, not the
+SaaS/e-commerce/client-work case the restriction targets.
+
+| Limit | Hobby/Free ceiling | This project's actual usage | Fit |
+|---|---|---|---|
+| Function duration | **10s hard cap, not configurable higher** | Cold path: ~1.2s module import + ~2s model retrain + a DB round trip; warm path: low tens of ms | OK, real margin — see the matplotlib fix below for why this wasn't always true |
+| Function invocations | 1M/month | A judge clicking through 3 screens a few times | Trivial |
+| Active CPU | 4 hours/month | Model retrain is CPU-bound (~2s) but only pays that cost once per cold container, not per request | Comfortable unless something hammers the endpoint continuously, which nothing here does |
+| Provisioned memory | 360 GB-hrs/month | One small function, low request volume | Comfortable |
+| Function bundle size | 250MB uncompressed | scikit-learn + numpy + fastapi + psycopg + anthropic, **matplotlib removed** (below) | Should fit with margin, not independently verified end-to-end (no account here) |
+| Bandwidth | 100GB/month | A few KB of HTML/JSON per click, one small PNG | Trivial |
+| Cron jobs | Not used by this deploy at all | — | N/A — irrelevant either way |
+| Neon storage | 0.5GB/project | 43 seeded rows across a handful of tables — low single-digit MB | Trivial |
+| Neon compute | 100 CU-hours/month, autosuspends after 5min idle at $0 | Bursts of activity around clicks, otherwise suspended | Comfortable |
+
+**One real fix made because of this analysis, not just noted:** the live
+request-serving path (`api/index.py` → `app/api/app.py` → `app/policies/
+live.py` → `app/ml/calibrate.py`) used to import `matplotlib` at module
+scope purely because `calibrate.py` also contained the (offline-only)
+reliability-diagram plotting code. Split into
+`app/ml/calibration_plot.py` (matplotlib, only imported by
+`scripts/train.py` and tests) and a matplotlib-free `app/ml/calibrate.py`
+(just `fit_isotonic`, the one thing the live path needs). Verified, not
+assumed: `'matplotlib' in sys.modules` is `False` after importing
+`api/index.py` fresh; full test suite (212 tests), ruff, and mypy strict
+all still pass. `requirements.txt` no longer lists matplotlib — smaller
+function bundle, faster cold start, nothing lost, since
+`reports/calibration.png` is a static file the deployed function never
+regenerates (`vercel.json` routes `/reports/*` around the function
+entirely).
+
+`vercel.json` also now pins `"maxDuration": 10` explicitly on the
+function — Hobby's ceiling either way, but stated rather than left
+implicit.
+
+## Remaining risks, named rather than discovered live
+
+- **Bundle size still isn't independently verified end-to-end** — no
+  Vercel account was available in this session to actually run
+  `vercel --prod` and see the real number. Should fit comfortably given
+  the matplotlib removal, but if the first deploy does fail on size, say
+  so and the next thing to trim is `anthropic` (only needed if you set
+  `ANTHROPIC_API_KEY` — could be made a lazy/optional import if it ever
+  comes to that).
 - **`POST /events` works, nothing then acts on it** — see Scope above.
   Don't demo live event submission on the deployed link; demo it locally
   where the seed/replay scripts actually drive resolution.

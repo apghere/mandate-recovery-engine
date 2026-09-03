@@ -13,7 +13,8 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from app.ml.calibrate import evaluate_and_plot, fit_isotonic
+from app.ml.calibrate import fit_isotonic
+from app.ml.calibration_plot import evaluate_and_plot
 from app.ml.corpus import corpus_to_features_and_labels, generate_corpus
 from app.ml.registry import save
 from app.ml.train import fit_success_model

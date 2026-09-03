@@ -59,7 +59,7 @@ app.include_router(dashboard_router)
 # clone -> demo in three commands"). Mounted last so it never shadows the
 # /events, /cases, /metrics, /audit, /admin routes above. /reports serves
 # evaluation/runner.py's generated BENCHMARK.md/benchmark.json and
-# app/ml/calibrate.py's calibration.png for the benchmark screen.
+# app/ml/calibration_plot.py's calibration.png for the benchmark screen.
 _REPO_ROOT = Path(__file__).resolve().parents[3]
 if (_REPO_ROOT / "reports").is_dir():
     app.mount("/reports", StaticFiles(directory=_REPO_ROOT / "reports"), name="reports")

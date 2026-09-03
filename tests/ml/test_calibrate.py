@@ -3,7 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 
 import numpy as np
-from app.ml.calibrate import evaluate_and_plot, expected_calibration_error, fit_isotonic
+from app.ml.calibrate import expected_calibration_error, fit_isotonic
+from app.ml.calibration_plot import evaluate_and_plot
 from app.ml.corpus import corpus_to_features_and_labels, generate_corpus
 from app.ml.train import fit_success_model
 

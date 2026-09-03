@@ -34,8 +34,8 @@ from app.ml.inference import slot_datetime
 # observations in the train split falls back to the cause-level rate
 # (and, if that's also sparse, the global rate) rather than reporting a
 # noisy small-sample average as if it were trustworthy -- the same
-# small-sample-honesty concern app/ml/calibrate.py's reliability diagram
-# already annotates bin counts for for the same reason.
+# small-sample-honesty concern app/ml/calibration_plot.py's reliability
+# diagram already annotates bin counts for for the same reason.
 MIN_BUCKET_SAMPLES = 20
 MIN_CAUSE_SAMPLES = 50
 
