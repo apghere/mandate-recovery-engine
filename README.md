@@ -54,8 +54,7 @@ time by a pure policy engine, so a planning mistake cannot become an unauthorise
 
 ### How it works
 
-```text
-Failed payment
+```Failed payment
      ↓
 Cause normalization
      ↓
@@ -68,7 +67,7 @@ Policy + compliance check
 RETRY / WAIT / NOTIFY / STOP
      ↓
 Audit + outcome
-
+```
 ## 4. Why AI and where it deliberately is not
 
 Two narrow, bounded LLM uses, both off the money path:
