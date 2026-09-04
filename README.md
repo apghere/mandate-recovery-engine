@@ -62,8 +62,8 @@ Two narrow, bounded LLM uses, both off the money path:
 - **Decline-reason normaliser** ([`app/ai/normalizer.py`](backend/app/ai/normalizer.py)) — dictionary
   → fuzzy match → Claude Haiku 4.5 → `UNKNOWN`. Free-text bank remarks are unbounded; the output
   space (13 canonical causes) is not. The LLM's job is compressing the tail the dictionary
-  doesn't cover not deciding what happens next.
-- **Notice generator** ([`app/ai/notice.py`](backend/app/ai/notice.py)) the LLM drafts,
+  doesn't cover, not deciding what happens next.
+- **Notice generator** ([`app/ai/notice.py`](backend/app/ai/notice.py)): the LLM drafts,
   a deterministic validator decides (RBI-required fields present, every number/date grounded in a
   literal whitelist, no manufactured urgency, per-channel length caps). One repair attempt, then a
   hard fallback to a static, self-consistent template.
@@ -73,10 +73,10 @@ escalation triggering are never AI.** The success-probability model (`HistGradie
 + isotonic calibration) is the third machine-learned component, and it is deliberately not an LLM —
 LLMs are badly calibrated probability estimators, and a planner that consumes probabilities needs
 calibration, not vibes. The planner itself is exact backward induction over ~280 states, solved in
-sub-millisecond time deterministic, explainable, and reproducible in a way an LLM call is not.
+sub-millisecond time: deterministic, explainable, and reproducible in a way an LLM call is not.
 
 Prompt-injection posture, stated plainly rather than hedged: *the normaliser was not made
-injection-proof its output space was made too small for injection to matter.* The worst a
+injection-proof; its output space was made too small for injection to matter.* The worst a
 successful injection can do is one misclassification into a 13-value enum, and the policy engine
 bounds what any misclassification can do downstream. `tests/ai/test_normalizer.py` red-team-tests
 this against every adversarial string in `data/taxonomy.yaml`, simulating an LLM that *is*
@@ -137,7 +137,7 @@ because the four-attempt guarantee must be a database constraint
 (`UNIQUE(cycle_id, sequence_no)`), not application logic — without it, the guarantee is a hope.
 **A single worker on a Postgres queue** (`SELECT ... FOR UPDATE SKIP LOCKED`), not Celery+Redis,
 because planning and execution must be asynchronous without introducing a consistency boundary
-between "decided" and "enqueued" the same transaction that reserves an attempt also enqueues its
+between "decided" and "enqueued". The same transaction that reserves an attempt also enqueues its
 delivery, so a crash between the two is impossible by construction, not by retry logic.
 
 ## 6. Key workflows
@@ -150,7 +150,7 @@ delivery, so a crash between the two is impossible by construction, not by retry
   attempts consumed** → `AWAITING_MANUAL`.
 - **W3 Compliance-blocked execution.** The plan wants a debit at D+2, but the D+1 notice never
   actually sent. The policy engine denies at execution time with `RBI_NOTICE_NOT_SATISFIED` —
-  independently of what the plan assumed the attempt is **not consumed**, and the case stays
+  independently of what the plan assumed, so the attempt is **not consumed** and the case stays
   `SCHEDULED` for its next pre-planned step. This is the single most important correctness property
   in the system: a planning mistake never becomes an unauthorised debit.
 - **W4 Operator review.** The case-detail dashboard screen shows the plan, every slot's
