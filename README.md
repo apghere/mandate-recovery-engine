@@ -54,7 +54,8 @@ time by a pure policy engine, so a planning mistake cannot become an unauthorise
 
 ### How it works
 
-```Failed payment
+```
+Failed payment
      ↓
 Cause normalization
      ↓
