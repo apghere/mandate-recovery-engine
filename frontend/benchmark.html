@@ -130,13 +130,13 @@ async function load() {
       `<strong>Honesty note:</strong> on this locked run, the naive fixed-schedule baseline
        recovered <em>more</em> gross rupees than MRE, greedy, and even the perfect-information
        oracle — not the hoped-for direction, reported as measured. See CLAUDE.md's Phase 8 notes
-       and README §Evaluation for the investigation of why (the DP prices a revocation/opt-out
+       and README's Evaluation section for the investigation of why (the DP prices a revocation/opt-out
        hazard cost this benchmark's single-cycle metric can't observe the benefit of).`;
   } else {
     honesty.className = "rounded-lg p-4 text-sm border bg-stone-100 border-line text-ink";
     honesty.innerHTML =
       `<strong>Honesty note:</strong> whatever the numbers above say, they are the numbers —
-       see README §Evaluation for the full methodology and its limitations.`;
+       see README's Evaluation section for the full methodology and its limitations.`;
   }
 }
 load();

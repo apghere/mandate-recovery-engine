@@ -30,6 +30,6 @@ jobs:
           python-version: "3.12"
       - run: pip install -e ".[dev]"
       - run: python -m scripts.migrate
-      - run: ruff check backend data simulator scripts tests
+      - run: ruff check .
       - run: mypy
       - run: pytest -q

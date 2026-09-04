@@ -1,4 +1,4 @@
--- Core schema (docs §P.2). Never edit an applied migration — add a new one.
+-- Core schema (docs P.2). Never edit an applied migration — add a new one.
 
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 

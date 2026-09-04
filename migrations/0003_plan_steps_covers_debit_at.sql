@@ -1,5 +1,5 @@
 -- A notify step must record which specific future attempt it covers,
--- rather than the worker assuming a fixed day-offset (docs §I.10's
+-- rather than the worker assuming a fixed day-offset (docs I.10's
 -- notice-freshness check is an *exact* covers_debit_at match). The fixed
 -- baseline always pairs notify with an attempt exactly 1 day later, so
 -- this went unnoticed until MRE's DP -- free to notify early and wait for

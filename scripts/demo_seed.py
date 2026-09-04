@@ -310,7 +310,10 @@ def main() -> None:
     print("  CYC-0-BLOCKED   (W3 compliance-blocked execution, the demo failure)")
     print(f"  + {len(payers)} background cases from the dev split")
     print()
-    print("Start the API + dashboard: .venv/bin/python -m uvicorn app.api.app:app --reload")
+    print(
+        "Start the API + dashboard: .venv/bin/python -m uvicorn "
+        "app.api.app:app --app-dir backend --reload"
+    )
     print("Then visit http://localhost:8000/dashboard/index.html")
 
 

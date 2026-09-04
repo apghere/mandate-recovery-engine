@@ -1,4 +1,4 @@
-# Raw decline-string templates per canonical cause (docs §J.4, §DATA_MODEL.md).
+# Raw decline-string templates per canonical cause (docs J.4, DATA_MODEL.md).
 #
 # Cause keys MUST exactly match backend.app.domain.types.Cause — the
 # generator refuses to load this file otherwise (see
@@ -128,8 +128,8 @@ causes:
     - "XXXXXX"
 
 # Appended (draw-time, not template-time) to ~3% of generated instances —
-# docs §J.4's adversarial/prompt-injection fixtures. The normaliser's
-# contract (docs §K.2) requires evidence_span to be a literal substring of
+# docs J.4's adversarial/prompt-injection fixtures. The normaliser's
+# contract (docs K.2) requires evidence_span to be a literal substring of
 # the *original* input, which is exactly what makes these harmless: the
 # worst outcome is one misclassification, never an executed instruction.
 adversarial_suffixes:

@@ -1,4 +1,19 @@
-# Working agreement
+# Working log and working agreement
+
+This file is two things, in order: the standing constraints the project
+was built under, and then a chronological engineering log — what was
+built each phase, what broke, what was found to be wrong, and what was
+deliberately left undone. It is append-only and written as work happened,
+so entries below reflect the state at the time they were written, not the
+final state.
+
+**Current status: all nine phases complete.** 212 tests green, lint and
+strict mypy clean, the locked test-split benchmark run once and reported
+as measured (see README's Evaluation section), and the dashboard deployed
+at mandate-recovery-engine.vercel.app. Known limitations are listed in
+README's Limitations section, not buried here.
+
+## Working agreement
 
 - Implement ONE phase per session. Stop at that phase's Definition of Done.
 - Write tests FIRST for anything in domain/policy, domain/planner, domain/fsm.
@@ -25,7 +40,7 @@
 | 8 | Benchmark, oracle, sensitivity | `make bench` reproducible byte-for-byte |
 | 9 | Dashboard, deploy, README | Fresh clone -> demo in three commands |
 
-Current status: Phase 3 done. Real Postgres wired (docker-compose + a
+Phase 3 done. Real Postgres wired (docker-compose + a
 committed, idempotent scripts/migrate.py runner). Idempotent event
 ingestion (app/ingest.py) for mandate.cycle.due / debit.succeeded /
 debit.failed, exposed thinly over HTTP (app/api/app.py's POST /events) and

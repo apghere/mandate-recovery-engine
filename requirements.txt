@@ -13,10 +13,11 @@
 # 2026-09-03 specifically so the live-serving import chain never reaches
 # app/ml/calibration_plot.py, the only place matplotlib is actually
 # imported. Confirmed empirically, not assumed: `'matplotlib' in
-# sys.modules` is False after importing api/index.py. Free-tier-relevant:
+# sys.modules` is False after importing index.py. Free-tier-relevant:
 # smaller function bundle, faster cold start, no benefit given up —
 # reports/calibration.png is a static file the deployed function never
-# regenerates (vercel.json routes /reports/* around it entirely).
+# regenerates — it is served straight from the bundle by the app's own
+# StaticFiles mount, the same way it is served locally.
 fastapi==0.141.1
 pydantic==2.13.4
 starlette==1.6.0

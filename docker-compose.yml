@@ -1,7 +1,7 @@
 # Phase 3: Postgres only, for real local development against the schema in
 # migrations/. api/worker/simulator run directly via `.venv/bin/uvicorn`
 # during development; containerizing them is a Day 6 deploy-polish concern
-# (docs §N Day 6), not a Day 2 correctness one — see docs/ADR/0002.
+# (docs N Day 6), not a Day 2 correctness one — see docs/ADR/0002.
 services:
   db:
     image: postgres:16-alpine

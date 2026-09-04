@@ -1,4 +1,4 @@
--- Payer population, persisted (docs §P.2 predates this table -- payer
+-- Payer population, persisted (docs P.2 predates this table -- payer
 -- attributes previously only existed transiently via
 -- data.generator.generate_population()). Needed once real cycles need
 -- real payer context (credit_day, mean_balance, ...) to score planner

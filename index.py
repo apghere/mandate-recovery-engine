@@ -2,16 +2,17 @@
 
 Lives at the repo root, not under api/, on purpose: Vercel's zero-config
 Python entrypoint search looks for index.py (among others) at the root or
-inside src//app/ — NOT inside api/, which is the older file-based-
+inside src/ or app/ — NOT inside api/, which is the older file-based-
 function convention. Mixing that convention with framework-preset
 auto-detection (Vercel detected FastAPI from pyproject.toml) caused every
 route to 404 in this project's first deploy attempt: the framework
 preset was routing every request to this function, but the request path
 Vercel handed the ASGI app didn't line up with what api/index.py plus a
-catch-all rewrite produced. Moving here and dropping the manual
-catch-all rewrite (vercel.json now only rewrites /dashboard/* and
-/reports/* to static files) fixed it — verified against the live
-deployment, not assumed.
+catch-all rewrite produced. Moving here and dropping vercel.json's
+rewrites entirely fixed it: the framework preset now routes every
+request straight to this app with the path intact, and /dashboard/*
+and /reports/* are served by the app's own StaticFiles mounts, exactly
+as they are locally. Verified against the live deployment, not assumed.
 
 Vercel's Python builder detects the `app` ASGI object exported from this
 file and wraps it directly — no uvicorn, no Mangum adapter needed. This

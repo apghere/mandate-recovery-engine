@@ -279,7 +279,7 @@ make up                # start Postgres, run migrations
 make demo-seed         # seed a curated, repeatable demo scenario (see below)
 ```
 
-Then in a separate terminal: `.venv/bin/python -m uvicorn app.api.app:app --reload` (run from the
+Then in a separate terminal: `.venv/bin/python -m uvicorn app.api.app:app --app-dir backend --reload` (run from the
 repo root) and visit `http://localhost:8000/dashboard/index.html`.
 
 `make demo-seed` wipes and reseeds three hand-picked cases, one per docs I.5 workflow
